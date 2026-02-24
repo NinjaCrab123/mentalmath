@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mental Math Weakness Trainer</title>
+  <style>
+    :root {
+      --bg-1: #f4f7ff;
+      --bg-2: #dff1ff;
+      --panel: #ffffff;
+      --text: #172554;
+      --muted: #456;
+      --accent: #0f766e;
+      --accent-2: #0891b2;
+      --ok: #15803d;
+      --bad: #b91c1c;
+      --line: #d9e2ef;
+      --shadow: 0 14px 35px rgba(23, 37, 84, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Avenir Next", "Segoe UI", Tahoma, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 0% 0%, #ffffff 0%, var(--bg-1) 35%, var(--bg-2) 100%);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: min(920px, 100%);
+      background: #ffffff;
+      border: 1px solid #e5edfa;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 28px 24px 18px;
+      background: linear-gradient(125deg, #ecfeff 0%, #eff6ff 55%, #ffffff 100%);
+      border-bottom: 1px solid #e3eef9;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 4vw, 2.1rem);
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: #375;
+      max-width: 68ch;
+      line-height: 1.45;
+    }
+
+    .section {
+      padding: 22px 24px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 160px;
+      flex: 1;
+    }
+
+    label {
+      font-weight: 600;
+      color: #245;
+      font-size: 0.95rem;
+    }
+
+    select,
+    input,
+    button {
+      font: inherit;
+    }
+
+    select,
+    input[type="text"] {
+      border: 1px solid #c7d5ea;
+      border-radius: 10px;
+      padding: 11px 12px;
+      width: 100%;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .button {
+      border: none;
+      border-radius: 12px;
+      padding: 11px 18px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.08s ease, filter 0.2s ease;
+      min-height: 44px;
+    }
+
+    .button:hover {
+      filter: brightness(1.05);
+    }
+
+    .button:active {
+      transform: translateY(1px);
+    }
+
+    .button.secondary {
+      background: linear-gradient(135deg, #334155, #475569);
+    }
+
+    .button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .game {
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: #fbfdff;
+    }
+
+    .hud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .metrics {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      background: #ecf4ff;
+      border: 1px solid #d5e6ff;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-weight: 700;
+      color: #123;
+    }
+
+    .mode {
+      color: #144;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .hint {
+      margin: 10px 0 0;
+      color: #365;
+      font-size: 0.93rem;
+      line-height: 1.4;
+    }
+
+    .problem {
+      font-size: clamp(2rem, 6vw, 3.1rem);
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      margin: 10px 0 16px;
+    }
+
+    form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    #answer {
+      width: 160px;
+      text-align: center;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .feedback {
+      min-height: 1.3em;
+      margin-top: 10px;
+      font-weight: 600;
+    }
+
+    .feedback.ok {
+      color: var(--ok);
+    }
+
+    .feedback.bad {
+      color: var(--bad);
+    }
+
+    .results {
+      background: #fff;
+    }
+
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .card {
+      border: 1px solid #dce8f7;
+      background: #f8fbff;
+      border-radius: 12px;
+      padding: 9px 12px;
+      font-weight: 650;
+    }
+
+    .weakness {
+      margin: 12px 0 16px;
+      padding: 11px 13px;
+      border-radius: 10px;
+      background: #ecfeff;
+      border: 1px solid #c4f2f6;
+      color: #0f4c5d;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    th,
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #ecf0f7;
+      text-align: left;
+    }
+
+    th {
+      color: #27496b;
+      font-size: 0.87rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    tr.top {
+      background: #fffce8;
+    }
+
+    .bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bar {
+      height: 8px;
+      min-width: 12px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      .section,
+      .hero {
+        padding: 18px;
+      }
+
+      #answer {
+        width: 130px;
+      }
+
+      .problem {
+        font-size: clamp(1.7rem, 10vw, 2.5rem);
+      }
+
+      table {
+        font-size: 0.88rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <h1>Mental Math Weakness Trainer</h1>
+      <p class="subtitle">Adaptive arithmetic rounds inspired by Zetamac. Run a mixed diagnostic first, then use an automatically curated booster designed to improve your speed for 2-12 x 2-100 multiplication.</p>
+    </header>
+
+    <section class="section">
+      <div class="controls">
+        <div class="field">
+          <label for="questionSet">Question Type</label>
+          <select id="questionSet">
+            <option value="diagnostic-mixed" selected>Diagnostic Mixed (+, -, x, /)</option>
+            <option value="curated-zetamac">Curated Zetamac Booster (adaptive)</option>
+            <option value="times-normal">Times Tables (normal)</option>
+            <option value="times-wide">Times Tables (2-12 x 2-100)</option>
+            <option value="addition">Addition</option>
+            <option value="subtraction">Subtraction</option>
+            <option value="division">Division</option>
+            <option value="mixed">Mixed (+, -, x, /)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="duration">Round Length</label>
+          <select id="duration">
+            <option value="60">60 seconds</option>
+            <option value="120" selected>120 seconds</option>
+            <option value="180">180 seconds</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="maxTable">Largest Times Table</label>
+          <select id="maxTable">
+            <option value="10">Up to 10</option>
+            <option value="12" selected>Up to 12</option>
+            <option value="15">Up to 15</option>
+            <option value="20">Up to 20</option>
+          </select>
+        </div>
+        <button id="startBtn" class="button">Start Round</button>
+      </div>
+      <p id="setHint" class="hint">Run the mixed diagnostic first. Then use Curated Zetamac Booster to train your weakest tables for 2-12 x 2-100.</p>
+    </section>
+
+    <section id="game" class="section game hidden">
+      <div class="hud">
+        <div class="metrics">
+          <div id="timer" class="pill">120.0s</div>
+          <div id="score" class="pill">Score: 0</div>
+          <div id="accuracy" class="pill">Accuracy: 0%</div>
+        </div>
+        <div id="mode" class="mode">Waiting to start</div>
+      </div>
+
+      <div id="problem" class="problem">8 x 7 = ?</div>
+
+      <form id="answerForm" autocomplete="off">
+        <input id="answer" type="text" inputmode="numeric" aria-label="Answer" placeholder="Answer" />
+        <button class="button" type="submit">Submit</button>
+      </form>
+
+      <div id="feedback" class="feedback" aria-live="polite"></div>
+    </section>
+
+    <section id="results" class="section results hidden">
+      <h2>Round Results</h2>
+      <div id="summary" class="summary"></div>
+      <div id="weakness" class="weakness"></div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+        <button id="practiceWeakestBtn" class="button secondary hidden">Practice Weakest Area</button>
+        <button id="newBalancedBtn" class="button">Start Round With Current Settings</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>Attempts</th>
+            <th>Total Time</th>
+            <th>Avg / Prompt</th>
+            <th>Accuracy</th>
+          </tr>
+        </thead>
+        <tbody id="tableStatsBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const OPERATION_LABELS = {
+      add: "Addition",
+      sub: "Subtraction",
+      mul: "Multiplication",
+      div: "Division"
+    };
+
+    const state = {
+      active: false,
+      timerId: null,
+      endAt: 0,
+      durationSec: 120,
+      maxTable: 12,
+      questionSet: "diagnostic-mixed",
+      focusKey: null,
+      attempted: 0,
+      correct: 0,
+      score: 0,
+      questionStartedAt: 0,
+      currentQuestion: null,
+      areaStats: {},
+      curatedPlan: null
+    };
+
+    const startBtn = document.getElementById("startBtn");
+    const questionSetSelect = document.getElementById("questionSet");
+    const durationSelect = document.getElementById("duration");
+    const maxTableSelect = document.getElementById("maxTable");
+    const setHintEl = document.getElementById("setHint");
+
+    const gameSection = document.getElementById("game");
+    const timerEl = document.getElementById("timer");
+    const scoreEl = document.getElementById("score");
+    const accuracyEl = document.getElementById("accuracy");
+    const modeEl = document.getElementById("mode");
+    const problemEl = document.getElementById("problem");
+    const feedbackEl = document.getElementById("feedback");
+    const answerForm = document.getElementById("answerForm");
+    const answerInput = document.getElementById("answer");
+
+    const resultsSection = document.getElementById("results");
+    const summaryEl = document.getElementById("summary");
+    const weaknessEl = document.getElementById("weakness");
+    const tableStatsBody = document.getElementById("tableStatsBody");
+    const practiceWeakestBtn = document.getElementById("practiceWeakestBtn");
+    const newBalancedBtn = document.getElementById("newBalancedBtn");
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function pickRandom(list) {
+      return list[randInt(0, list.length - 1)];
+    }
+
+    function buildCandidateList(min, max, excludedSet) {
+      const values = [];
+      for (let value = min; value <= max; value += 1) {
+        if (excludedSet && excludedSet.has(value)) {
+          continue;
+        }
+        values.push(value);
+      }
+      return values;
+    }
+
+    function getNormalTableCandidates(maxTable) {
+      const candidates = buildCandidateList(1, maxTable, new Set([1, 10]));
+      return candidates.length ? candidates : buildCandidateList(1, maxTable, null);
+    }
+
+    function getWideTableCandidates() {
+      return buildCandidateList(2, 12, new Set([10]));
+    }
+
+    function getWideMultiplierCandidates() {
+      return buildCandidateList(2, 100, new Set([10, 100]));
+    }
+
+    function getDivisionDivisorCandidates() {
+      return buildCandidateList(2, 12, new Set([10]));
+    }
+
+    function getDivisionQuotientCandidates() {
+      return buildCandidateList(2, 100, null);
+    }
+
+    function parseTableFromKey(key) {
+      if (!key || !key.startsWith("table-")) {
+        return null;
+      }
+      const parsed = Number(key.slice(6));
+      return Number.isInteger(parsed) ? parsed : null;
+    }
+
+    function parseOperationFromKey(key) {
+      if (!key || !key.startsWith("op-")) {
+        return null;
+      }
+      const operation = key.slice(3);
+      return OPERATION_LABELS[operation] ? operation : null;
+    }
+
+    function describeQuestionSet(questionSet, maxTable) {
+      if (questionSet === "diagnostic-mixed") {
+        return "Diagnostic mixed (+, -, x, /) with non-trivial x and /";
+      }
+      if (questionSet === "curated-zetamac") {
+        return "Curated Zetamac booster: adaptive 2-12 x 2-100";
+      }
+      if (questionSet === "times-normal") {
+        return `Times tables: 1-${maxTable} x 1-${maxTable} (without x1/x10 prompts)`;
+      }
+      if (questionSet === "times-wide") {
+        return "Times tables: 2-12 x 2-100 (without x10/x100 prompts)";
+      }
+      if (questionSet === "addition") {
+        return "Addition: 2-200 + 2-200";
+      }
+      if (questionSet === "subtraction") {
+        return "Subtraction: non-negative answers";
+      }
+      if (questionSet === "division") {
+        return "Division: integer answers (without /1 or /10)";
+      }
+      return "Mixed operations: +, -, x, /";
+    }
+
+    function updateSetHint() {
+      const questionSet = questionSetSelect.value;
+      const hints = {
+        "diagnostic-mixed": "Recommended: run this first so the app can find your weak tables and build a targeted Zetamac booster.",
+        "curated-zetamac": "Adaptive mode: mostly weak 2-12 tables and non-trivial multipliers (no x1/x10/x100).",
+        "times-normal": "Normal table mode excludes x1 and x10 prompts to keep reps non-trivial.",
+        "times-wide": "Wide mode uses 2-12 x 2-100 and removes x10/x100 prompts.",
+        addition: "Addition mode uses values from 2 to 200.",
+        subtraction: "Subtraction mode keeps answers non-negative.",
+        division: "Division mode keeps integer answers and removes /1 and /10 prompts.",
+        mixed: "Mixed mode rotates +, -, x, / with non-trivial multiplication/division."
+      };
+      setHintEl.textContent = hints[questionSet];
+      maxTableSelect.disabled = questionSet !== "times-normal";
+    }
+
+    function resetAreaStats() {
+      state.areaStats = {};
+    }
+
+    function ensureAreaStats(areaKey, areaLabel) {
+      if (!state.areaStats[areaKey]) {
+        state.areaStats[areaKey] = {
+          key: areaKey,
+          label: areaLabel,
+          attempts: 0,
+          correct: 0,
+          totalTimeMs: 0
+        };
+      }
+      return state.areaStats[areaKey];
+    }
+
+    function resolveFocusKey(focusKey) {
+      if (!focusKey) {
+        return null;
+      }
+
+      const table = parseTableFromKey(focusKey);
+      const op = parseOperationFromKey(focusKey);
+
+      if (state.questionSet === "times-normal") {
+        const candidates = getNormalTableCandidates(state.maxTable);
+        return table && candidates.includes(table) ? focusKey : null;
+      }
+
+      if (state.questionSet === "times-wide" || state.questionSet === "curated-zetamac") {
+        const candidates = getWideTableCandidates();
+        return table && candidates.includes(table) ? focusKey : null;
+      }
+
+      if (state.questionSet === "mixed" || state.questionSet === "diagnostic-mixed") {
+        if (op) {
+          return focusKey;
+        }
+        const tableCandidates = getWideTableCandidates();
+        return table && tableCandidates.includes(table) ? focusKey : null;
+      }
+
+      return null;
+    }
+
+    function getDefaultCuratedPlan() {
+      const tableRows = getWideTableCandidates().map((table) => ({
+        table,
+        score: 1,
+        weight: 1
+      }));
+      return {
+        createdAt: Date.now(),
+        source: "default",
+        tableRows
+      };
+    }
+
+    function getCurrentPlanSummary() {
+      if (!state.curatedPlan || !state.curatedPlan.tableRows || !state.curatedPlan.tableRows.length) {
+        return "balanced weak-table training";
+      }
+      const top = state.curatedPlan.tableRows.slice(0, 3).map((row) => `${row.table}s`).join(", ");
+      return `priority tables: ${top}`;
+    }
+
+    function getFocusModeLabel() {
+      if (!state.focusKey) {
+        if (state.questionSet === "curated-zetamac") {
+          return `Curated booster (${getCurrentPlanSummary()})`;
+        }
+        return `Mode: ${describeQuestionSet(state.questionSet, state.maxTable)}`;
+      }
+
+      const table = parseTableFromKey(state.focusKey);
+      if (table) {
+        return `Focus mode: ${table}s table`;
+      }
+
+      const op = parseOperationFromKey(state.focusKey);
+      if (op) {
+        return `Focus mode: ${OPERATION_LABELS[op]}`;
+      }
+
+      return `Mode: ${describeQuestionSet(state.questionSet, state.maxTable)}`;
+    }
+
+    function buildAdditionQuestion(areaKey = "op-add", areaLabel = OPERATION_LABELS.add) {
+      const left = randInt(2, 200);
+      const right = randInt(2, 200);
+      return {
+        prompt: `${left} + ${right} = ?`,
+        answer: left + right,
+        areaKey,
+        areaLabel
+      };
+    }
+
+    function buildSubtractionQuestion(areaKey = "op-sub", areaLabel = OPERATION_LABELS.sub) {
+      const right = randInt(2, 200);
+      const left = randInt(right, 220);
+      return {
+        prompt: `${left} - ${right} = ?`,
+        answer: left - right,
+        areaKey,
+        areaLabel
+      };
+    }
+
+    function buildTimesNormalQuestion(fixedTable = null) {
+      const candidates = getNormalTableCandidates(state.maxTable);
+      const table = fixedTable && candidates.includes(fixedTable) ? fixedTable : pickRandom(candidates);
+      const multiplier = pickRandom(candidates);
+      return {
+        prompt: `${table} x ${multiplier} = ?`,
+        answer: table * multiplier,
+        areaKey: `table-${table}`,
+        areaLabel: `${table}s table`
+      };
+    }
+
+    function buildTimesWideQuestion(fixedTable = null) {
+      const tableCandidates = getWideTableCandidates();
+      const multiplierCandidates = getWideMultiplierCandidates();
+      const table = fixedTable && tableCandidates.includes(fixedTable) ? fixedTable : pickRandom(tableCandidates);
+      const multiplier = pickRandom(multiplierCandidates);
+      return {
+        prompt: `${table} x ${multiplier} = ?`,
+        answer: table * multiplier,
+        areaKey: `table-${table}`,
+        areaLabel: `${table}s table`
+      };
+    }
+
+    function buildDivisionQuestion(areaKey = "op-div", areaLabel = OPERATION_LABELS.div) {
+      const divisor = pickRandom(getDivisionDivisorCandidates());
+      const quotient = pickRandom(getDivisionQuotientCandidates());
+      const dividend = divisor * quotient;
+      return {
+        prompt: `${dividend} / ${divisor} = ?`,
+        answer: quotient,
+        areaKey,
+        areaLabel
+      };
+    }
+
+    function buildMixedQuestion(questionSet) {
+      const focusedTable = parseTableFromKey(state.focusKey);
+      const focusedOperation = parseOperationFromKey(state.focusKey);
+
+      let operation;
+      if (focusedTable) {
+        operation = "mul";
+      } else if (focusedOperation) {
+        operation = focusedOperation;
+      } else {
+        operation = pickRandom(["add", "sub", "mul", "div"]);
+      }
+
+      if (operation === "add") {
+        return buildAdditionQuestion("op-add", OPERATION_LABELS.add);
+      }
+      if (operation === "sub") {
+        return buildSubtractionQuestion("op-sub", OPERATION_LABELS.sub);
+      }
+      if (operation === "div") {
+        return buildDivisionQuestion("op-div", OPERATION_LABELS.div);
+      }
+
+      if (questionSet === "diagnostic-mixed" && focusedTable) {
+        return buildTimesWideQuestion(focusedTable);
+      }
+      return buildTimesWideQuestion(focusedTable);
+    }
+
+    function calculateWeaknessScore(entry) {
+      return entry.totalTimeMs / entry.attempts;
+    }
+
+    function buildCuratedPlanFromDiagnostic() {
+      const candidates = getWideTableCandidates();
+      const rows = candidates.map((table) => {
+        const key = `table-${table}`;
+        const entry = state.areaStats[key];
+        if (!entry || !entry.attempts) {
+          return {
+            table,
+            attempts: 0,
+            score: null,
+            weight: 1
+          };
+        }
+        return {
+          table,
+          attempts: entry.attempts,
+          score: calculateWeaknessScore(entry),
+          weight: 1
+        };
+      });
+
+      const observedScores = rows.filter((row) => row.score !== null).map((row) => row.score);
+      const fallback = observedScores.length
+        ? observedScores.reduce((sum, value) => sum + value, 0) / observedScores.length
+        : 2400;
+
+      rows.forEach((row) => {
+        if (row.score === null) {
+          row.score = fallback * 1.05;
+        }
+      });
+
+      rows.sort((a, b) => b.score - a.score);
+      const maxScore = rows[0] ? rows[0].score : 1;
+      rows.forEach((row, index) => {
+        const normalized = row.score / maxScore;
+        const rankBoost = (rows.length - index) / rows.length;
+        row.weight = 1 + normalized * 3 + rankBoost;
+      });
+
+      return {
+        createdAt: Date.now(),
+        source: "diagnostic",
+        tableRows: rows
+      };
+    }
+
+    function pickWeightedRow(rows) {
+      const totalWeight = rows.reduce((sum, row) => sum + row.weight, 0);
+      let cursor = Math.random() * totalWeight;
+      for (const row of rows) {
+        cursor -= row.weight;
+        if (cursor <= 0) {
+          return row;
+        }
+      }
+      return rows[rows.length - 1];
+    }
+
+    function buildCuratedQuestion() {
+      if (!state.curatedPlan) {
+        state.curatedPlan = getDefaultCuratedPlan();
+      }
+
+      const focusedTable = parseTableFromKey(state.focusKey);
+      const tableCandidates = getWideTableCandidates();
+      let table = focusedTable && tableCandidates.includes(focusedTable) ? focusedTable : null;
+
+      if (!table) {
+        const usePriorityPool = Math.random() < 0.85;
+        if (usePriorityPool && state.curatedPlan.tableRows.length) {
+          const priorityPool = state.curatedPlan.tableRows.slice(0, 5);
+          table = pickWeightedRow(priorityPool).table;
+        } else {
+          table = pickRandom(tableCandidates);
+        }
+      }
+
+      const multiplier = pickRandom(getWideMultiplierCandidates());
+      return {
+        prompt: `${table} x ${multiplier} = ?`,
+        answer: table * multiplier,
+        areaKey: `table-${table}`,
+        areaLabel: `${table}s table`
+      };
+    }
+
+    function buildQuestion() {
+      if (state.questionSet === "diagnostic-mixed") {
+        return buildMixedQuestion("diagnostic-mixed");
+      }
+      if (state.questionSet === "curated-zetamac") {
+        return buildCuratedQuestion();
+      }
+      if (state.questionSet === "times-normal") {
+        return buildTimesNormalQuestion(parseTableFromKey(state.focusKey));
+      }
+      if (state.questionSet === "times-wide") {
+        return buildTimesWideQuestion(parseTableFromKey(state.focusKey));
+      }
+      if (state.questionSet === "addition") {
+        return buildAdditionQuestion("op-add", OPERATION_LABELS.add);
+      }
+      if (state.questionSet === "subtraction") {
+        return buildSubtractionQuestion("op-sub", OPERATION_LABELS.sub);
+      }
+      if (state.questionSet === "division") {
+        return buildDivisionQuestion("op-div", OPERATION_LABELS.div);
+      }
+      return buildMixedQuestion("mixed");
+    }
+
+    function updateHud() {
+      const accuracy = state.attempted ? Math.round((state.correct / state.attempted) * 100) : 0;
+      scoreEl.textContent = `Score: ${state.score}`;
+      accuracyEl.textContent = `Accuracy: ${accuracy}%`;
+    }
+
+    function updateTimer() {
+      if (!state.active) {
+        return;
+      }
+      const remainingMs = Math.max(0, state.endAt - performance.now());
+      timerEl.textContent = `${(remainingMs / 1000).toFixed(1)}s`;
+      if (remainingMs <= 0) {
+        finishRound();
+      }
+    }
+
+    function nextQuestion() {
+      state.currentQuestion = buildQuestion();
+      problemEl.textContent = state.currentQuestion.prompt;
+      state.questionStartedAt = performance.now();
+      answerInput.value = "";
+      answerInput.focus();
+    }
+
+    function startRound(focusKey = null) {
+      if (state.timerId) {
+        clearInterval(state.timerId);
+      }
+
+      state.durationSec = Number(durationSelect.value);
+      state.maxTable = Number(maxTableSelect.value);
+      state.questionSet = questionSetSelect.value;
+      state.focusKey = resolveFocusKey(focusKey);
+
+      if (state.questionSet === "curated-zetamac" && !state.curatedPlan) {
+        state.curatedPlan = getDefaultCuratedPlan();
+      }
+
+      state.attempted = 0;
+      state.correct = 0;
+      state.score = 0;
+      state.active = true;
+      resetAreaStats();
+      state.endAt = performance.now() + state.durationSec * 1000;
+
+      modeEl.textContent = getFocusModeLabel();
+      feedbackEl.textContent = "";
+      feedbackEl.className = "feedback";
+      updateHud();
+      timerEl.textContent = `${state.durationSec.toFixed(1)}s`;
+
+      gameSection.classList.remove("hidden");
+      resultsSection.classList.add("hidden");
+      answerInput.disabled = false;
+      nextQuestion();
+
+      state.timerId = setInterval(updateTimer, 100);
+    }
+
+    function finishRound() {
+      if (!state.active) {
+        return;
+      }
+      state.active = false;
+      clearInterval(state.timerId);
+      state.timerId = null;
+      answerInput.disabled = true;
+      renderResults();
+    }
+
+    function renderResults() {
+      const areas = Object.values(state.areaStats)
+        .filter((entry) => entry.attempts > 0)
+        .map((entry) => {
+          const totalSeconds = entry.totalTimeMs / 1000;
+          return {
+            key: entry.key,
+            label: entry.label,
+            attempts: entry.attempts,
+            totalSeconds,
+            avgSeconds: totalSeconds / entry.attempts,
+            accuracyPct: (entry.correct / entry.attempts) * 100
+          };
+        });
+
+      areas.sort((a, b) => b.avgSeconds - a.avgSeconds);
+      const maxAvg = areas.length ? areas[0].avgSeconds : 0;
+
+      summaryEl.innerHTML = "";
+      const summaryCards = [
+        `Mode: ${describeQuestionSet(state.questionSet, state.maxTable)}`,
+        `Problems attempted: ${state.attempted}`,
+        `Correct: ${state.correct}`,
+        `Final score: ${state.score}`,
+        `Overall accuracy: ${state.attempted ? Math.round((state.correct / state.attempted) * 100) : 0}%`
+      ];
+      summaryCards.forEach((text) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.textContent = text;
+        summaryEl.appendChild(card);
+      });
+
+      tableStatsBody.innerHTML = "";
+      practiceWeakestBtn.classList.add("hidden");
+      practiceWeakestBtn.dataset.action = "";
+      practiceWeakestBtn.dataset.key = "";
+
+      if (!areas.length) {
+        weaknessEl.textContent = "No completed problems this round. Start another round to generate weakness analysis.";
+        resultsSection.classList.remove("hidden");
+        return;
+      }
+
+      if (state.questionSet === "diagnostic-mixed") {
+        state.curatedPlan = buildCuratedPlanFromDiagnostic();
+        const topTables = state.curatedPlan.tableRows.slice(0, 4).map((row) => `${row.table}s`).join(", ");
+        weaknessEl.textContent = `Diagnostic complete. Best next step for Zetamac (2-12 x 2-100): train these priority tables: ${topTables}. Easy prompts are already filtered out (no x1/x10/x100 and no /1 or /10).`;
+        practiceWeakestBtn.dataset.action = "curated";
+        practiceWeakestBtn.textContent = "Start Curated Zetamac Booster";
+        practiceWeakestBtn.classList.remove("hidden");
+      } else {
+        const weakest = areas[0];
+        if (weakest.key.startsWith("table-")) {
+          weaknessEl.textContent = `Your slowest average was on the ${weakest.label}: ${weakest.avgSeconds.toFixed(2)}s per prompt across ${weakest.attempts} prompts.`;
+        } else {
+          weaknessEl.textContent = `Your slowest average area was ${weakest.label}: ${weakest.avgSeconds.toFixed(2)}s per prompt across ${weakest.attempts} prompts.`;
+        }
+
+        if (areas.length > 1) {
+          practiceWeakestBtn.dataset.action = "focus";
+          practiceWeakestBtn.dataset.key = weakest.key;
+          practiceWeakestBtn.textContent = weakest.key.startsWith("table-")
+            ? `Practice ${weakest.label}`
+            : `Focus on ${weakest.label}`;
+          practiceWeakestBtn.classList.remove("hidden");
+        }
+      }
+
+      areas.forEach((row, index) => {
+        const tr = document.createElement("tr");
+        if (index === 0) {
+          tr.classList.add("top");
+        }
+        const barPct = maxAvg ? Math.max(6, Math.round((row.avgSeconds / maxAvg) * 100)) : 6;
+        tr.innerHTML = `
+          <td>${row.label}</td>
+          <td>${row.attempts}</td>
+          <td>
+            <div class="bar-wrap">
+              <div class="bar" style="width:${barPct}%"></div>
+              <span>${row.totalSeconds.toFixed(2)}s</span>
+            </div>
+          </td>
+          <td>${row.avgSeconds.toFixed(2)}s</td>
+          <td>${Math.round(row.accuracyPct)}%</td>
+        `;
+        tableStatsBody.appendChild(tr);
+      });
+
+      resultsSection.classList.remove("hidden");
+    }
+
+    answerForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!state.active || !state.currentQuestion) {
+        return;
+      }
+
+      const raw = answerInput.value.trim();
+      if (raw === "") {
+        return;
+      }
+
+      const userValue = Number(raw);
+      if (!Number.isFinite(userValue)) {
+        feedbackEl.textContent = "Enter a number.";
+        feedbackEl.className = "feedback bad";
+        answerInput.select();
+        return;
+      }
+
+      const now = performance.now();
+      const elapsed = now - state.questionStartedAt;
+      const current = state.currentQuestion;
+      const stats = ensureAreaStats(current.areaKey, current.areaLabel);
+
+      state.attempted += 1;
+      stats.attempts += 1;
+      stats.totalTimeMs += elapsed;
+
+      if (userValue === current.answer) {
+        state.correct += 1;
+        state.score += 1;
+        stats.correct += 1;
+        feedbackEl.textContent = "Correct";
+        feedbackEl.className = "feedback ok";
+      } else {
+        feedbackEl.textContent = `Correct answer: ${current.answer}`;
+        feedbackEl.className = "feedback bad";
+      }
+
+      updateHud();
+
+      if (now >= state.endAt) {
+        finishRound();
+        return;
+      }
+
+      nextQuestion();
+    });
+
+    startBtn.addEventListener("click", () => startRound(null));
+    newBalancedBtn.addEventListener("click", () => startRound(null));
+    practiceWeakestBtn.addEventListener("click", () => {
+      const action = practiceWeakestBtn.dataset.action;
+      if (action === "curated") {
+        questionSetSelect.value = "curated-zetamac";
+        updateSetHint();
+        startRound(null);
+        return;
+      }
+      if (action === "focus") {
+        const focusKey = practiceWeakestBtn.dataset.key;
+        if (focusKey) {
+          startRound(focusKey);
+        }
+      }
+    });
+    questionSetSelect.addEventListener("change", updateSetHint);
+
+    updateSetHint();
+  </script>
+</body>
+</html>
