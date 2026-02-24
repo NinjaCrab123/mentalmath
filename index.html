@@ -280,6 +280,160 @@
       color: #4a6280;
     }
 
+    .tier-badge {
+      display: inline-block;
+      min-width: 34px;
+      text-align: center;
+      font-weight: 800;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 0.78rem;
+      border: 1px solid transparent;
+    }
+
+    .tier-s {
+      color: #0b5;
+      background: #e8fff2;
+      border-color: #b8f2d5;
+    }
+
+    .tier-a {
+      color: #0f766e;
+      background: #e7fcfb;
+      border-color: #b9ece8;
+    }
+
+    .tier-b {
+      color: #0369a1;
+      background: #eaf5ff;
+      border-color: #c7e4ff;
+    }
+
+    .tier-c {
+      color: #a16207;
+      background: #fff8e8;
+      border-color: #f8e2b8;
+    }
+
+    .tier-d {
+      color: #b45309;
+      background: #fff3e6;
+      border-color: #ffd5ad;
+    }
+
+    .tier-f {
+      color: #b91c1c;
+      background: #ffecec;
+      border-color: #ffc5c5;
+    }
+
+    .chart-panel {
+      margin-bottom: 14px;
+      border: 1px solid #dce8f7;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .chart-panel h3 {
+      margin: 0;
+      padding: 11px 12px;
+      border-bottom: 1px solid #e4ecf8;
+      background: #f7fbff;
+      font-size: 1rem;
+      color: #163;
+    }
+
+    .chart-body {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .chart-row {
+      display: grid;
+      grid-template-columns: 96px 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .chart-label {
+      font-weight: 700;
+      color: #214;
+    }
+
+    .chart-track {
+      height: 10px;
+      border-radius: 999px;
+      background: #eaf1fb;
+      overflow: hidden;
+      border: 1px solid #d5e2f3;
+    }
+
+    .chart-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444);
+    }
+
+    .chart-value {
+      min-width: 58px;
+      text-align: right;
+      color: #234;
+      font-weight: 700;
+    }
+
+    .heatmap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+      gap: 8px;
+    }
+
+    .heat-cell {
+      border-radius: 10px;
+      border: 1px solid #d4e0f0;
+      padding: 8px;
+      display: grid;
+      gap: 4px;
+      color: #102a43;
+      background: #f9fcff;
+    }
+
+    .heat-cell .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .heat-cell .sub {
+      font-size: 0.8rem;
+      color: #375;
+    }
+
+    .tier-stack {
+      border: 1px solid #d5e2f3;
+      border-radius: 999px;
+      overflow: hidden;
+      height: 16px;
+      display: flex;
+      background: #eaf1fb;
+    }
+
+    .tier-segment {
+      height: 100%;
+      min-width: 2px;
+    }
+
+    .tier-legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 0.82rem;
+      color: #27496b;
+    }
+
     .summary {
       display: flex;
       flex-wrap: wrap;
@@ -461,6 +615,18 @@
       <h2>Lifetime Stats</h2>
       <p class="muted">Cumulative performance across all rounds on this browser.</p>
       <div id="statsOverview" class="stats-grid"></div>
+      <div class="chart-panel">
+        <h3>Visual Analytics</h3>
+        <div class="chart-body">
+          <div class="muted">Operation speed (slower bars indicate weaker areas)</div>
+          <div id="operationSpeedChart"></div>
+          <div class="muted">Multiplication table heatmap</div>
+          <div id="tableHeatmap" class="heatmap-grid"></div>
+          <div class="muted">Speed tier distribution</div>
+          <div id="tierDistributionBar" class="tier-stack"></div>
+          <div id="tierLegend" class="tier-legend"></div>
+        </div>
+      </div>
       <div class="stats-panel">
         <h3>By Operation</h3>
         <table>
@@ -470,6 +636,7 @@
               <th>Attempts</th>
               <th>Accuracy</th>
               <th>Avg / Prompt</th>
+              <th>Tier</th>
             </tr>
           </thead>
           <tbody id="operationStatsBody"></tbody>
@@ -484,6 +651,7 @@
               <th>Attempts</th>
               <th>Accuracy</th>
               <th>Avg / Prompt</th>
+              <th>Tier</th>
             </tr>
           </thead>
           <tbody id="multiplicationStatsBody"></tbody>
@@ -498,6 +666,7 @@
               <th>Attempts</th>
               <th>Accuracy</th>
               <th>Avg / Prompt</th>
+              <th>Tier</th>
             </tr>
           </thead>
           <tbody id="divisionStatsBody"></tbody>
@@ -512,6 +681,7 @@
               <th>Attempts</th>
               <th>Accuracy</th>
               <th>Avg / Prompt</th>
+              <th>Tier</th>
             </tr>
           </thead>
           <tbody id="multiplicationSingleStatsBody"></tbody>
@@ -526,6 +696,7 @@
               <th>Attempts</th>
               <th>Accuracy</th>
               <th>Avg / Prompt</th>
+              <th>Tier</th>
             </tr>
           </thead>
           <tbody id="additionPairStatsBody"></tbody>
@@ -540,6 +711,7 @@
               <th>Attempts</th>
               <th>Accuracy</th>
               <th>Avg / Prompt</th>
+              <th>Tier</th>
             </tr>
           </thead>
           <tbody id="subtractionPairStatsBody"></tbody>
@@ -566,6 +738,17 @@
       sub: 0.14,
       div: 0.10
     };
+    const SPEED_TIERS = [
+      { id: "S", label: "Elite", maxSeconds: 1.6, color: "#22c55e" },
+      { id: "A", label: "Fast", maxSeconds: 2.2, color: "#10b981" },
+      { id: "B", label: "Solid", maxSeconds: 2.9, color: "#0ea5e9" },
+      { id: "C", label: "Building", maxSeconds: 3.8, color: "#f59e0b" },
+      { id: "D", label: "Developing", maxSeconds: 5.0, color: "#f97316" },
+      { id: "F", label: "Needs work", maxSeconds: Number.POSITIVE_INFINITY, color: "#ef4444" }
+    ];
+    const CURATED_BALANCE_RATIO_TARGET = 1.22;
+    const CURATED_SPEED_IMPROVEMENT_TARGET = 0.93;
+    const CURATED_MIN_TABLE_ATTEMPTS = 3;
     const LIFETIME_STORAGE_KEY = "mental_math_lifetime_stats_v1";
 
     const state = {
@@ -587,7 +770,8 @@
       diagnosticMulTableBag: [],
       lifetimeStats: null,
       currentView: "practice",
-      feedbackTimeoutId: null
+      feedbackTimeoutId: null,
+      coachCycle: 0
     };
 
     const startBtn = document.getElementById("startBtn");
@@ -616,6 +800,10 @@
     const practiceWeakestBtn = document.getElementById("practiceWeakestBtn");
     const newBalancedBtn = document.getElementById("newBalancedBtn");
     const statsOverviewEl = document.getElementById("statsOverview");
+    const operationSpeedChartEl = document.getElementById("operationSpeedChart");
+    const tableHeatmapEl = document.getElementById("tableHeatmap");
+    const tierDistributionBarEl = document.getElementById("tierDistributionBar");
+    const tierLegendEl = document.getElementById("tierLegend");
     const operationStatsBody = document.getElementById("operationStatsBody");
     const multiplicationStatsBody = document.getElementById("multiplicationStatsBody");
     const divisionStatsBody = document.getElementById("divisionStatsBody");
@@ -765,8 +953,22 @@
       return {
         attempts,
         accuracyPct,
-        avgSeconds
+        avgSeconds,
+        hasData: attempts > 0
       };
+    }
+
+    function getSpeedTier(avgSeconds) {
+      for (const tier of SPEED_TIERS) {
+        if (avgSeconds <= tier.maxSeconds) {
+          return tier;
+        }
+      }
+      return SPEED_TIERS[SPEED_TIERS.length - 1];
+    }
+
+    function tierClassForId(tierId) {
+      return `tier-${String(tierId || "f").toLowerCase()}`;
     }
 
     function bucketWeaknessScore(bucket, baselineMs = 2400) {
@@ -867,19 +1069,111 @@
       clearElementChildren(bodyEl);
       if (!rows.length) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="4" class="muted">${emptyLabel}</td>`;
+        tr.innerHTML = `<td colspan="5" class="muted">${emptyLabel}</td>`;
         bodyEl.appendChild(tr);
         return;
       }
       rows.forEach((row) => {
+        const tier = row.hasData ? getSpeedTier(row.avgSeconds) : null;
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${row.label}</td>
           <td>${row.attempts}</td>
-          <td>${row.accuracyPct}%</td>
-          <td>${row.avgSeconds.toFixed(2)}s</td>
+          <td>${row.hasData ? `${row.accuracyPct}%` : "--"}</td>
+          <td>${row.hasData ? `${row.avgSeconds.toFixed(2)}s` : "--"}</td>
+          <td>${row.hasData ? `<span class="tier-badge ${tierClassForId(tier.id)}">${tier.id}</span>` : "--"}</td>
         `;
         bodyEl.appendChild(tr);
+      });
+    }
+
+    function renderOperationSpeedChart(rows) {
+      clearElementChildren(operationSpeedChartEl);
+      const dataRows = rows.filter((row) => row.hasData);
+      if (!dataRows.length) {
+        operationSpeedChartEl.innerHTML = `<div class="muted">No operation data yet.</div>`;
+        return;
+      }
+      const maxAvg = Math.max(...dataRows.map((row) => row.avgSeconds), 0.1);
+      dataRows.forEach((row) => {
+        const tier = getSpeedTier(row.avgSeconds);
+        const widthPct = Math.max(6, Math.round((row.avgSeconds / maxAvg) * 100));
+        const wrapper = document.createElement("div");
+        wrapper.className = "chart-row";
+        wrapper.innerHTML = `
+          <div class="chart-label">${row.label}</div>
+          <div class="chart-track">
+            <div class="chart-fill" style="width:${widthPct}%"></div>
+          </div>
+          <div class="chart-value">${row.avgSeconds.toFixed(2)}s</div>
+          <div><span class="tier-badge ${tierClassForId(tier.id)}">${tier.id}</span></div>
+        `;
+        operationSpeedChartEl.appendChild(wrapper);
+      });
+    }
+
+    function renderTableHeatmap(rows) {
+      clearElementChildren(tableHeatmapEl);
+      const dataRows = rows.filter((row) => row.hasData);
+      if (!dataRows.length) {
+        tableHeatmapEl.innerHTML = `<div class="muted">No multiplication table data yet.</div>`;
+        return;
+      }
+      const maxAvg = Math.max(...dataRows.map((row) => row.avgSeconds), 0.1);
+      const minAvg = Math.min(...dataRows.map((row) => row.avgSeconds));
+      const spread = Math.max(0.01, maxAvg - minAvg);
+      dataRows.forEach((row) => {
+        const tier = getSpeedTier(row.avgSeconds);
+        const normalized = (row.avgSeconds - minAvg) / spread;
+        const hue = 120 - normalized * 120;
+        const cell = document.createElement("div");
+        cell.className = "heat-cell";
+        cell.style.background = `hsl(${hue} 92% 95%)`;
+        cell.style.borderColor = `hsl(${hue} 60% 78%)`;
+        cell.innerHTML = `
+          <div class="head">
+            <span>${row.label}</span>
+            <span class="tier-badge ${tierClassForId(tier.id)}">${tier.id}</span>
+          </div>
+          <div class="sub">${row.avgSeconds.toFixed(2)}s avg</div>
+          <div class="sub">${row.attempts} attempts</div>
+        `;
+        tableHeatmapEl.appendChild(cell);
+      });
+    }
+
+    function renderTierDistribution(rows) {
+      clearElementChildren(tierDistributionBarEl);
+      clearElementChildren(tierLegendEl);
+      const dataRows = rows.filter((row) => row.hasData);
+      if (!dataRows.length) {
+        tierLegendEl.innerHTML = `<span class="muted">No tier distribution yet.</span>`;
+        return;
+      }
+      const counts = {};
+      SPEED_TIERS.forEach((tier) => {
+        counts[tier.id] = 0;
+      });
+      dataRows.forEach((row) => {
+        const tier = getSpeedTier(row.avgSeconds);
+        counts[tier.id] += 1;
+      });
+      const total = dataRows.length;
+      SPEED_TIERS.forEach((tier) => {
+        const count = counts[tier.id];
+        if (!count) {
+          return;
+        }
+        const segment = document.createElement("div");
+        segment.className = "tier-segment";
+        segment.style.width = `${(count / total) * 100}%`;
+        segment.style.background = tier.color;
+        segment.title = `${tier.id} (${tier.label}): ${count}`;
+        tierDistributionBarEl.appendChild(segment);
+
+        const legend = document.createElement("span");
+        legend.innerHTML = `<span class="tier-badge ${tierClassForId(tier.id)}">${tier.id}</span> ${tier.label} (${count})`;
+        tierLegendEl.appendChild(legend);
       });
     }
 
@@ -889,12 +1183,16 @@
       }
 
       const totals = bucketToMetrics(state.lifetimeStats.totals);
+      const overallTier = totals.hasData ? getSpeedTier(totals.avgSeconds) : null;
+      const cycleLabel = state.coachCycle ? String(state.coachCycle) : "Not started";
       clearElementChildren(statsOverviewEl);
       const cards = [
         `Total prompts: ${totals.attempts}`,
         `Total correct: ${state.lifetimeStats.totals.correct}`,
         `Lifetime accuracy: ${totals.accuracyPct}%`,
-        `Average time: ${totals.avgSeconds.toFixed(2)}s`
+        `Average time: ${totals.hasData ? `${totals.avgSeconds.toFixed(2)}s` : "--"}`,
+        `Speed tier: ${overallTier ? `${overallTier.id} (${overallTier.label})` : "--"}`,
+        `Coaching cycle: ${cycleLabel}`
       ];
       cards.forEach((text) => {
         const card = document.createElement("div");
@@ -970,6 +1268,10 @@
           };
         });
       renderStatsTableRows(subtractionPairStatsBody, subtractionPairRows, "No subtraction pair data yet.");
+
+      renderOperationSpeedChart(operationRows);
+      renderTableHeatmap(multiplicationRows);
+      renderTierDistribution([...operationRows, ...multiplicationRows, ...divisionRows]);
     }
 
     function setView(view) {
@@ -1099,7 +1401,7 @@
         return "Diagnostic mixed with balanced coverage (+, -, x, /), weighted toward multiplication";
       }
       if (questionSet === "curated-zetamac") {
-        return "Curated Zetamac booster: adaptive 2-12 x 2-100";
+        return "Curated Zetamac booster: adaptive 2-12 x 2-100 coaching cycle";
       }
       if (questionSet === "times-normal") {
         return `Times tables: 1-${maxTable} x 1-${maxTable} (without x1/x10 prompts)`;
@@ -1123,7 +1425,7 @@
       const questionSet = questionSetSelect.value;
       const hints = {
         "diagnostic-mixed": "Recommended first: balanced diagnostic with guaranteed 2-12 table rotation (including 12s) plus +, -, and / coverage.",
-        "curated-zetamac": "Adaptive mode: targets weak tables, single-fact multiplication patterns, and weak addition/subtraction/division pairs.",
+        "curated-zetamac": "Adaptive coaching loop: trains weak tables/pairs until balanced and faster, then sends you to the next diagnostic cycle.",
         "times-normal": "Normal table mode excludes x1 and x10 prompts to keep reps non-trivial.",
         "times-wide": "Wide mode uses 2-12 x 2-100 and removes x10/x100 prompts.",
         addition: "Addition mode uses values from 2 to 200.",
@@ -1225,7 +1527,9 @@
         return "balanced weak-table training";
       }
       const top = state.curatedPlan.tableRows.slice(0, 3).map((row) => `${row.table}s`).join(", ");
-      return `priority tables: ${top}`;
+      const cycle = state.curatedPlan.cycle || state.coachCycle;
+      const target = state.curatedPlan.targetMeanMs ? `${(state.curatedPlan.targetMeanMs / 1000).toFixed(2)}s` : "n/a";
+      return `cycle ${cycle}, target ${target}, priority tables: ${top}`;
     }
 
     function getFocusModeLabel() {
@@ -1365,7 +1669,9 @@
       return bucketWeaknessScore(entry, baselineMs);
     }
 
-    function buildCuratedPlanFromDiagnostic() {
+    function buildCuratedPlanFromDiagnostic(options = {}) {
+      const source = options.source || "diagnostic";
+      const previousPlan = options.previousPlan || state.curatedPlan;
       const candidates = getWideTableCandidates();
       const tableRows = candidates.map((table) => {
         const key = `table-${table}`;
@@ -1505,15 +1811,85 @@
         .sort((a, b) => b.score - a.score);
       applyRankWeights(divisionRows, 2.2, 0.7);
 
+      const baselineTableAvgMs = average(
+        tableRows.map((row) => row.score),
+        2400
+      );
+      const diagnosticTableMeanMs = source === "diagnostic"
+        ? baselineTableAvgMs
+        : (previousPlan && previousPlan.diagnosticTableMeanMs) || baselineTableAvgMs;
+      const targetMeanMs = source === "diagnostic"
+        ? diagnosticTableMeanMs * CURATED_SPEED_IMPROVEMENT_TARGET
+        : (previousPlan && previousPlan.targetMeanMs) || diagnosticTableMeanMs * CURATED_SPEED_IMPROVEMENT_TARGET;
+      const cycle = source === "diagnostic"
+        ? ((previousPlan && previousPlan.cycle) || state.coachCycle || 0) + 1
+        : ((previousPlan && previousPlan.cycle) || state.coachCycle || 1);
+
       return {
         createdAt: Date.now(),
-        source: "diagnostic",
+        source,
+        cycle,
+        diagnosticTableMeanMs,
+        targetMeanMs,
         tableRows,
         operationRows,
         multiplicationSingleRows,
         additionPairRows,
         subtractionPairRows,
         divisionRows
+      };
+    }
+
+    function getLifetimeWideTableRows() {
+      const candidates = getWideTableCandidates();
+      return candidates.map((table) => {
+        const bucket = state.lifetimeStats && state.lifetimeStats.multiplicationTables
+          ? state.lifetimeStats.multiplicationTables[String(table)]
+          : null;
+        const attempts = bucket ? bucket.attempts : 0;
+        const avgSeconds = attempts ? bucket.totalTimeMs / attempts / 1000 : null;
+        return {
+          table,
+          attempts,
+          avgSeconds
+        };
+      });
+    }
+
+    function evaluateCuratedProgress(plan) {
+      const usableRows = getLifetimeWideTableRows().filter((row) => row.attempts >= CURATED_MIN_TABLE_ATTEMPTS && row.avgSeconds !== null);
+      if (usableRows.length < 6) {
+        return {
+          readyForDiagnostic: false,
+          balanced: false,
+          speedMet: false,
+          insufficientData: true,
+          sampledTables: usableRows.length,
+          requiredTables: 6,
+          averageSeconds: null,
+          targetSeconds: plan && plan.targetMeanMs ? plan.targetMeanMs / 1000 : null,
+          balanceRatio: null
+        };
+      }
+
+      const avgSeconds = average(usableRows.map((row) => row.avgSeconds));
+      const minSeconds = Math.min(...usableRows.map((row) => row.avgSeconds));
+      const maxSeconds = Math.max(...usableRows.map((row) => row.avgSeconds));
+      const balanceRatio = maxSeconds / Math.max(minSeconds, 0.01);
+      const targetSeconds = plan && plan.targetMeanMs ? plan.targetMeanMs / 1000 : avgSeconds;
+      const balanced = balanceRatio <= CURATED_BALANCE_RATIO_TARGET;
+      const speedMet = avgSeconds <= targetSeconds;
+
+      return {
+        readyForDiagnostic: balanced && speedMet,
+        balanced,
+        speedMet,
+        insufficientData: false,
+        sampledTables: usableRows.length,
+        requiredTables: 6,
+        averageSeconds: avgSeconds,
+        targetSeconds,
+        balanceRatio
       };
     }
 
@@ -1808,12 +2184,17 @@
       }
 
       if (state.questionSet === "diagnostic-mixed") {
-        state.curatedPlan = buildCuratedPlanFromDiagnostic();
+        state.curatedPlan = buildCuratedPlanFromDiagnostic({
+          source: "diagnostic",
+          previousPlan: state.curatedPlan
+        });
+        state.coachCycle = state.curatedPlan.cycle || state.coachCycle;
         const topTables = state.curatedPlan.tableRows.slice(0, 4).map((row) => `${row.table}s`).join(", ");
         const topSingles = (state.curatedPlan.multiplicationSingleRows || []).slice(0, 3).map((row) => row.label).join(", ");
         const topAddPairs = (state.curatedPlan.additionPairRows || []).slice(0, 2).map((row) => row.label).join(", ");
         const topSubPairs = (state.curatedPlan.subtractionPairRows || []).slice(0, 2).map((row) => row.label).join(", ");
-        let message = `Diagnostic complete. Priority multiplication tables: ${topTables}.`;
+        const target = state.curatedPlan.targetMeanMs ? `${(state.curatedPlan.targetMeanMs / 1000).toFixed(2)}s` : "n/a";
+        let message = `Diagnostic cycle ${state.coachCycle} complete. Priority multiplication tables: ${topTables}. Target average speed for this cycle: ${target}.`;
         if (topSingles) {
           message += ` Weak single-facts: ${topSingles}.`;
         }
@@ -1828,6 +2209,30 @@
         practiceWeakestBtn.dataset.action = "curated";
         practiceWeakestBtn.textContent = "Start Curated Zetamac Booster";
         practiceWeakestBtn.classList.remove("hidden");
+      } else if (state.questionSet === "curated-zetamac") {
+        state.curatedPlan = buildCuratedPlanFromDiagnostic({
+          source: "curated-refresh",
+          previousPlan: state.curatedPlan
+        });
+        const progress = evaluateCuratedProgress(state.curatedPlan);
+        if (progress.readyForDiagnostic) {
+          weaknessEl.textContent = `Cycle ${state.coachCycle} goal reached. Tables are balanced (spread ratio ${progress.balanceRatio.toFixed(2)}) and average speed ${progress.averageSeconds.toFixed(2)}s met target ${progress.targetSeconds.toFixed(2)}s. Run the next diagnostic cycle to push speed further.`;
+          practiceWeakestBtn.dataset.action = "diagnostic";
+          practiceWeakestBtn.textContent = "Run Next Diagnostic Cycle";
+          practiceWeakestBtn.classList.remove("hidden");
+        } else if (progress.insufficientData) {
+          weaknessEl.textContent = `Curated coaching in progress. Need more table coverage before evaluating balance (${progress.sampledTables}/${progress.requiredTables} tables have at least ${CURATED_MIN_TABLE_ATTEMPTS} attempts).`;
+          practiceWeakestBtn.dataset.action = "curated";
+          practiceWeakestBtn.textContent = "Continue Curated Booster";
+          practiceWeakestBtn.classList.remove("hidden");
+        } else {
+          const balanceText = progress.balanced ? "balanced" : "still uneven";
+          const speedText = progress.speedMet ? "speed target met" : "speed target not met yet";
+          weaknessEl.textContent = `Curated coaching in progress: table spread ratio ${progress.balanceRatio.toFixed(2)} (${balanceText}), average speed ${progress.averageSeconds.toFixed(2)}s vs target ${progress.targetSeconds.toFixed(2)}s (${speedText}). Continue curated practice until both pass.`;
+          practiceWeakestBtn.dataset.action = "curated";
+          practiceWeakestBtn.textContent = "Continue Curated Booster";
+          practiceWeakestBtn.classList.remove("hidden");
+        }
       } else {
         const weakest = areas[0];
         if (weakest.key.startsWith("table-")) {
@@ -1957,6 +2362,12 @@
         startRound(null);
         return;
       }
+      if (action === "diagnostic") {
+        questionSetSelect.value = "diagnostic-mixed";
+        updateSetHint();
+        startRound(null);
+        return;
+      }
       if (action === "focus") {
         const focusKey = practiceWeakestBtn.dataset.key;
         if (focusKey) {
@@ -1970,6 +2381,8 @@
         return;
       }
       state.lifetimeStats = createLifetimeStats();
+      state.coachCycle = 0;
+      state.curatedPlan = null;
       saveLifetimeStats();
       renderStatsPage();
     });
