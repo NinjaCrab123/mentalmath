@@ -503,6 +503,48 @@
           <tbody id="divisionStatsBody"></tbody>
         </table>
       </div>
+      <div class="stats-panel">
+        <h3>Multiplication Single-Fact Patterns</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Pattern</th>
+              <th>Attempts</th>
+              <th>Accuracy</th>
+              <th>Avg / Prompt</th>
+            </tr>
+          </thead>
+          <tbody id="multiplicationSingleStatsBody"></tbody>
+        </table>
+      </div>
+      <div class="stats-panel">
+        <h3>Addition Ones-Digit Pairs</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>Attempts</th>
+              <th>Accuracy</th>
+              <th>Avg / Prompt</th>
+            </tr>
+          </thead>
+          <tbody id="additionPairStatsBody"></tbody>
+        </table>
+      </div>
+      <div class="stats-panel">
+        <h3>Subtraction Ones-Digit Pairs</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>Attempts</th>
+              <th>Accuracy</th>
+              <th>Avg / Prompt</th>
+            </tr>
+          </thead>
+          <tbody id="subtractionPairStatsBody"></tbody>
+        </table>
+      </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button id="resetStatsBtn" class="button secondary" type="button">Reset Lifetime Stats</button>
       </div>
@@ -518,6 +560,12 @@
     };
     const OPERATION_ORDER = ["add", "sub", "mul", "div"];
     const DIAGNOSTIC_OP_CYCLE = ["mul", "add", "mul", "sub", "mul", "div"];
+    const CURATED_BASE_OPERATION_WEIGHTS = {
+      mul: 0.62,
+      add: 0.14,
+      sub: 0.14,
+      div: 0.10
+    };
     const LIFETIME_STORAGE_KEY = "mental_math_lifetime_stats_v1";
 
     const state = {
@@ -538,7 +586,8 @@
       diagnosticOpBag: [],
       diagnosticMulTableBag: [],
       lifetimeStats: null,
-      currentView: "practice"
+      currentView: "practice",
+      feedbackTimeoutId: null
     };
 
     const startBtn = document.getElementById("startBtn");
@@ -570,6 +619,9 @@
     const operationStatsBody = document.getElementById("operationStatsBody");
     const multiplicationStatsBody = document.getElementById("multiplicationStatsBody");
     const divisionStatsBody = document.getElementById("divisionStatsBody");
+    const multiplicationSingleStatsBody = document.getElementById("multiplicationSingleStatsBody");
+    const additionPairStatsBody = document.getElementById("additionPairStatsBody");
+    const subtractionPairStatsBody = document.getElementById("subtractionPairStatsBody");
     const resetStatsBtn = document.getElementById("resetStatsBtn");
 
     function randInt(min, max) {
@@ -596,6 +648,13 @@
       return state[stateKey].pop();
     }
 
+    function clearPendingFeedbackTimeout() {
+      if (state.feedbackTimeoutId) {
+        clearTimeout(state.feedbackTimeoutId);
+        state.feedbackTimeoutId = null;
+      }
+    }
+
     function createStatBucket() {
       return {
         attempts: 0,
@@ -614,7 +673,10 @@
           div: createStatBucket()
         },
         multiplicationTables: {},
-        divisionTables: {}
+        divisionTables: {},
+        multiplicationSingles: {},
+        additionPairs: {},
+        subtractionPairs: {}
       };
     }
 
@@ -662,7 +724,10 @@
           div: normalizeBucket(raw.operations && raw.operations.div)
         },
         multiplicationTables: normalizeBucketMap(raw.multiplicationTables),
-        divisionTables: normalizeBucketMap(raw.divisionTables)
+        divisionTables: normalizeBucketMap(raw.divisionTables),
+        multiplicationSingles: normalizeBucketMap(raw.multiplicationSingles),
+        additionPairs: normalizeBucketMap(raw.additionPairs),
+        subtractionPairs: normalizeBucketMap(raw.subtractionPairs)
       };
       return normalized;
     }
@@ -701,6 +766,100 @@
         attempts,
         accuracyPct,
         avgSeconds
+      };
+    }
+
+    function bucketWeaknessScore(bucket, baselineMs = 2400) {
+      const attempts = bucket.attempts || 0;
+      if (!attempts) {
+        return null;
+      }
+      const avgMs = bucket.totalTimeMs / attempts;
+      const errorRate = 1 - bucket.correct / attempts;
+      const smoothedAvg = (avgMs * attempts + baselineMs * 3) / (attempts + 3);
+      return smoothedAvg * (1 + errorRate * 2);
+    }
+
+    function topWeakRowsFromMap(map, labelBuilder, options = {}) {
+      const minAttempts = options.minAttempts || 2;
+      const limit = options.limit || 6;
+      const rows = Object.keys(map || {})
+        .map((key) => {
+          const bucket = map[key];
+          const score = bucketWeaknessScore(bucket);
+          if (score === null || bucket.attempts < minAttempts) {
+            return null;
+          }
+          return {
+            key,
+            label: labelBuilder(key),
+            attempts: bucket.attempts,
+            score,
+            bucket
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.score - a.score);
+      return rows.slice(0, limit);
+    }
+
+    function digitsFromNumber(value) {
+      return String(Math.abs(value))
+        .split("")
+        .map((char) => Number(char))
+        .filter((digit) => Number.isInteger(digit));
+    }
+
+    function average(values, fallback = 0) {
+      if (!values.length) {
+        return fallback;
+      }
+      return values.reduce((sum, value) => sum + value, 0) / values.length;
+    }
+
+    function applyRankWeights(rows, spread = 3, minWeight = 1) {
+      if (!rows.length) {
+        return rows;
+      }
+      const maxScore = rows[0].score || 1;
+      rows.forEach((row, index) => {
+        const normalized = row.score / maxScore;
+        const rankBoost = (rows.length - index) / rows.length;
+        row.weight = minWeight + normalized * spread + rankBoost;
+      });
+      return rows;
+    }
+
+    function parseMulSingleKey(key) {
+      const match = /^(\d+)x(\d+)$/.exec(key);
+      if (!match) {
+        return null;
+      }
+      return {
+        table: Number(match[1]),
+        digit: Number(match[2])
+      };
+    }
+
+    function parseAddPairKey(key) {
+      const match = /^(\d+)\+(\d+)$/.exec(key);
+      if (!match) {
+        return null;
+      }
+      return {
+        a: Number(match[1]),
+        b: Number(match[2])
+      };
+    }
+
+    function parseSubPairKey(key) {
+      const match = /^(\d+)-(\d+)$/.exec(key);
+      if (!match) {
+        return null;
+      }
+      return {
+        a: Number(match[1]),
+        b: Number(match[2])
       };
     }
 
@@ -778,6 +937,39 @@
           };
         });
       renderStatsTableRows(divisionStatsBody, divisionRows, "No division-table data yet.");
+
+      const multiplicationSingleRows = Object.keys(state.lifetimeStats.multiplicationSingles)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+        .map((key) => {
+          const metrics = bucketToMetrics(state.lifetimeStats.multiplicationSingles[key]);
+          return {
+            label: key,
+            ...metrics
+          };
+        });
+      renderStatsTableRows(multiplicationSingleStatsBody, multiplicationSingleRows, "No multiplication single-pattern data yet.");
+
+      const additionPairRows = Object.keys(state.lifetimeStats.additionPairs)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+        .map((key) => {
+          const metrics = bucketToMetrics(state.lifetimeStats.additionPairs[key]);
+          return {
+            label: key,
+            ...metrics
+          };
+        });
+      renderStatsTableRows(additionPairStatsBody, additionPairRows, "No addition pair data yet.");
+
+      const subtractionPairRows = Object.keys(state.lifetimeStats.subtractionPairs)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+        .map((key) => {
+          const metrics = bucketToMetrics(state.lifetimeStats.subtractionPairs[key]);
+          return {
+            label: key,
+            ...metrics
+          };
+        });
+      renderStatsTableRows(subtractionPairStatsBody, subtractionPairRows, "No subtraction pair data yet.");
     }
 
     function setView(view) {
@@ -796,40 +988,59 @@
         return;
       }
 
+      const applyAttempt = (bucket) => {
+        bucket.attempts += 1;
+        bucket.totalTimeMs += elapsedMs;
+        if (isCorrect) {
+          bucket.correct += 1;
+        }
+      };
+
       const totalsBucket = state.lifetimeStats.totals;
-      totalsBucket.attempts += 1;
-      totalsBucket.totalTimeMs += elapsedMs;
-      if (isCorrect) {
-        totalsBucket.correct += 1;
-      }
+      applyAttempt(totalsBucket);
 
       const operationBucket = state.lifetimeStats.operations[question.operation];
       if (operationBucket) {
-        operationBucket.attempts += 1;
-        operationBucket.totalTimeMs += elapsedMs;
-        if (isCorrect) {
-          operationBucket.correct += 1;
-        }
+        applyAttempt(operationBucket);
       }
 
       if (question.operation === "mul" && Number.isInteger(question.table)) {
         const key = String(question.table);
         const bucket = ensureLifetimeBucket(state.lifetimeStats.multiplicationTables, key);
-        bucket.attempts += 1;
-        bucket.totalTimeMs += elapsedMs;
-        if (isCorrect) {
-          bucket.correct += 1;
+        applyAttempt(bucket);
+
+        if (Number.isInteger(question.multiplier)) {
+          const digits = digitsFromNumber(question.multiplier).filter((digit) => digit >= 2);
+          digits.forEach((digit) => {
+            const singleKey = `${question.table}x${digit}`;
+            const singleBucket = ensureLifetimeBucket(state.lifetimeStats.multiplicationSingles, singleKey);
+            applyAttempt(singleBucket);
+          });
         }
       }
 
       if (question.operation === "div" && Number.isInteger(question.table)) {
         const key = String(question.table);
         const bucket = ensureLifetimeBucket(state.lifetimeStats.divisionTables, key);
-        bucket.attempts += 1;
-        bucket.totalTimeMs += elapsedMs;
-        if (isCorrect) {
-          bucket.correct += 1;
-        }
+        applyAttempt(bucket);
+      }
+
+      if (question.operation === "add" && Number.isInteger(question.left) && Number.isInteger(question.right)) {
+        const onesA = Math.abs(question.left) % 10;
+        const onesB = Math.abs(question.right) % 10;
+        const minDigit = Math.min(onesA, onesB);
+        const maxDigit = Math.max(onesA, onesB);
+        const pairKey = `${minDigit}+${maxDigit}`;
+        const pairBucket = ensureLifetimeBucket(state.lifetimeStats.additionPairs, pairKey);
+        applyAttempt(pairBucket);
+      }
+
+      if (question.operation === "sub" && Number.isInteger(question.left) && Number.isInteger(question.right)) {
+        const onesA = Math.abs(question.left) % 10;
+        const onesB = Math.abs(question.right) % 10;
+        const pairKey = `${onesA}-${onesB}`;
+        const pairBucket = ensureLifetimeBucket(state.lifetimeStats.subtractionPairs, pairKey);
+        applyAttempt(pairBucket);
       }
 
       saveLifetimeStats();
@@ -912,7 +1123,7 @@
       const questionSet = questionSetSelect.value;
       const hints = {
         "diagnostic-mixed": "Recommended first: balanced diagnostic with guaranteed 2-12 table rotation (including 12s) plus +, -, and / coverage.",
-        "curated-zetamac": "Adaptive mode: mostly weak 2-12 tables and non-trivial multipliers (no x1/x10/x100).",
+        "curated-zetamac": "Adaptive mode: targets weak tables, single-fact multiplication patterns, and weak addition/subtraction/division pairs.",
         "times-normal": "Normal table mode excludes x1 and x10 prompts to keep reps non-trivial.",
         "times-wide": "Wide mode uses 2-12 x 2-100 and removes x10/x100 prompts.",
         addition: "Addition mode uses values from 2 to 200.",
@@ -959,7 +1170,18 @@
         return table && candidates.includes(table) ? focusKey : null;
       }
 
-      if (state.questionSet === "times-wide" || state.questionSet === "curated-zetamac") {
+      if (state.questionSet === "curated-zetamac") {
+        const candidates = getWideTableCandidates();
+        if (table && candidates.includes(table)) {
+          return focusKey;
+        }
+        if (op) {
+          return focusKey;
+        }
+        return null;
+      }
+
+      if (state.questionSet === "times-wide") {
         const candidates = getWideTableCandidates();
         return table && candidates.includes(table) ? focusKey : null;
       }
@@ -981,10 +1203,20 @@
         score: 1,
         weight: 1
       }));
+      const operationRows = OPERATION_ORDER.map((operation) => ({
+        operation,
+        score: 1,
+        weight: CURATED_BASE_OPERATION_WEIGHTS[operation]
+      }));
       return {
         createdAt: Date.now(),
         source: "default",
-        tableRows
+        tableRows,
+        operationRows,
+        multiplicationSingleRows: [],
+        additionPairRows: [],
+        subtractionPairRows: [],
+        divisionRows: []
       };
     }
 
@@ -1026,7 +1258,9 @@
         areaKey,
         areaLabel,
         operation: "add",
-        table: null
+        table: null,
+        left,
+        right
       };
     }
 
@@ -1039,7 +1273,9 @@
         areaKey,
         areaLabel,
         operation: "sub",
-        table: null
+        table: null,
+        left,
+        right
       };
     }
 
@@ -1053,22 +1289,26 @@
         areaKey: `table-${table}`,
         areaLabel: `${table}s table`,
         operation: "mul",
-        table
+        table,
+        multiplier
       };
     }
 
-    function buildTimesWideQuestion(fixedTable = null) {
+    function buildTimesWideQuestion(fixedTable = null, fixedMultiplier = null) {
       const tableCandidates = getWideTableCandidates();
       const multiplierCandidates = getWideMultiplierCandidates();
       const table = fixedTable && tableCandidates.includes(fixedTable) ? fixedTable : pickRandom(tableCandidates);
-      const multiplier = pickRandom(multiplierCandidates);
+      const multiplier = fixedMultiplier && multiplierCandidates.includes(fixedMultiplier)
+        ? fixedMultiplier
+        : pickRandom(multiplierCandidates);
       return {
         prompt: `${table} x ${multiplier} = ?`,
         answer: table * multiplier,
         areaKey: `table-${table}`,
         areaLabel: `${table}s table`,
         operation: "mul",
-        table
+        table,
+        multiplier
       };
     }
 
@@ -1082,7 +1322,10 @@
         areaKey,
         areaLabel,
         operation: "div",
-        table: divisor
+        table: divisor,
+        dividend,
+        divisor,
+        quotient
       };
     }
 
@@ -1118,54 +1361,159 @@
       return buildTimesWideQuestion(focusedTable);
     }
 
-    function calculateWeaknessScore(entry) {
-      return entry.totalTimeMs / entry.attempts;
+    function calculateWeaknessScore(entry, baselineMs = 2400) {
+      return bucketWeaknessScore(entry, baselineMs);
     }
 
     function buildCuratedPlanFromDiagnostic() {
       const candidates = getWideTableCandidates();
-      const rows = candidates.map((table) => {
+      const tableRows = candidates.map((table) => {
         const key = `table-${table}`;
         const entry = state.areaStats[key];
-        if (!entry || !entry.attempts) {
-          return {
-            table,
-            attempts: 0,
-            score: null,
-            weight: 1
-          };
-        }
+        const score = entry && entry.attempts ? calculateWeaknessScore(entry) : null;
         return {
           table,
-          attempts: entry.attempts,
-          score: calculateWeaknessScore(entry),
+          attempts: entry ? entry.attempts : 0,
+          score,
           weight: 1
         };
       });
 
-      const observedScores = rows.filter((row) => row.score !== null).map((row) => row.score);
-      const fallback = observedScores.length
-        ? observedScores.reduce((sum, value) => sum + value, 0) / observedScores.length
-        : 2400;
-
-      rows.forEach((row) => {
+      const observedTableScores = tableRows.filter((row) => row.score !== null).map((row) => row.score);
+      const tableFallback = average(observedTableScores, 2400);
+      tableRows.forEach((row) => {
         if (row.score === null) {
-          row.score = fallback * 1.05;
+          row.score = tableFallback * 1.04;
         }
       });
+      tableRows.sort((a, b) => b.score - a.score);
+      applyRankWeights(tableRows, 3.4, 1);
 
-      rows.sort((a, b) => b.score - a.score);
-      const maxScore = rows[0] ? rows[0].score : 1;
-      rows.forEach((row, index) => {
-        const normalized = row.score / maxScore;
-        const rankBoost = (rows.length - index) / rows.length;
-        row.weight = 1 + normalized * 3 + rankBoost;
+      const mulScore = average(tableRows.map((row) => row.score), tableFallback);
+      const operationRows = OPERATION_ORDER.map((operation) => {
+        const roundEntry = state.areaStats[`op-${operation}`];
+        const roundScore = roundEntry && roundEntry.attempts
+          ? calculateWeaknessScore(roundEntry, tableFallback)
+          : null;
+        const lifetimeBucket = state.lifetimeStats && state.lifetimeStats.operations
+          ? state.lifetimeStats.operations[operation]
+          : null;
+        const lifetimeScore = lifetimeBucket && lifetimeBucket.attempts
+          ? bucketWeaknessScore(lifetimeBucket, tableFallback)
+          : null;
+        const defaultScore = operation === "mul" ? mulScore : tableFallback * 0.95;
+        const combinedScore = average(
+          [roundScore, lifetimeScore].filter((score) => Number.isFinite(score)),
+          defaultScore
+        );
+        return {
+          operation,
+          score: combinedScore,
+          weight: CURATED_BASE_OPERATION_WEIGHTS[operation]
+        };
       });
+      const operationScoreMean = average(operationRows.map((row) => row.score), tableFallback);
+      operationRows.forEach((row) => {
+        const weaknessFactor = row.score / (operationScoreMean || 1);
+        row.weight = CURATED_BASE_OPERATION_WEIGHTS[row.operation] * (0.65 + weaknessFactor);
+      });
+      operationRows.sort((a, b) => b.weight - a.weight);
+
+      const allowedTableSet = new Set(candidates);
+      const multiplicationSingleRows = topWeakRowsFromMap(
+        state.lifetimeStats ? state.lifetimeStats.multiplicationSingles : {},
+        (key) => key,
+        { minAttempts: 1, limit: 18 }
+      )
+        .map((row) => {
+          const parsed = parseMulSingleKey(row.key);
+          if (!parsed || !allowedTableSet.has(parsed.table) || parsed.digit < 2 || parsed.digit > 9) {
+            return null;
+          }
+          return {
+            ...row,
+            table: parsed.table,
+            digit: parsed.digit,
+            weight: 1
+          };
+        })
+        .filter(Boolean);
+      applyRankWeights(multiplicationSingleRows, 2.3, 0.6);
+
+      const additionPairRows = topWeakRowsFromMap(
+        state.lifetimeStats ? state.lifetimeStats.additionPairs : {},
+        (key) => key,
+        { minAttempts: 1, limit: 14 }
+      )
+        .map((row) => {
+          const parsed = parseAddPairKey(row.key);
+          if (!parsed) {
+            return null;
+          }
+          return {
+            ...row,
+            a: parsed.a,
+            b: parsed.b,
+            weight: 1
+          };
+        })
+        .filter(Boolean);
+      applyRankWeights(additionPairRows, 2.1, 0.5);
+
+      const subtractionPairRows = topWeakRowsFromMap(
+        state.lifetimeStats ? state.lifetimeStats.subtractionPairs : {},
+        (key) => key,
+        { minAttempts: 1, limit: 14 }
+      )
+        .map((row) => {
+          const parsed = parseSubPairKey(row.key);
+          if (!parsed) {
+            return null;
+          }
+          return {
+            ...row,
+            a: parsed.a,
+            b: parsed.b,
+            weight: 1
+          };
+        })
+        .filter(Boolean);
+      applyRankWeights(subtractionPairRows, 2.1, 0.5);
+
+      const divisionRows = Object.keys(state.lifetimeStats ? state.lifetimeStats.divisionTables : {})
+        .map((key) => {
+          const divisor = Number(key);
+          const bucket = state.lifetimeStats.divisionTables[key];
+          if (!Number.isInteger(divisor) || !bucket || bucket.attempts < 1) {
+            return null;
+          }
+          if (!getDivisionDivisorCandidates().includes(divisor)) {
+            return null;
+          }
+          const score = bucketWeaknessScore(bucket, tableFallback);
+          if (!Number.isFinite(score)) {
+            return null;
+          }
+          return {
+            divisor,
+            attempts: bucket.attempts,
+            score,
+            weight: 1
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.score - a.score);
+      applyRankWeights(divisionRows, 2.2, 0.7);
 
       return {
         createdAt: Date.now(),
         source: "diagnostic",
-        tableRows: rows
+        tableRows,
+        operationRows,
+        multiplicationSingleRows,
+        additionPairRows,
+        subtractionPairRows,
+        divisionRows
       };
     }
 
@@ -1181,34 +1529,134 @@
       return rows[rows.length - 1];
     }
 
+    function buildAdditionPairQuestion(a, b) {
+      const onesA = Math.max(0, Math.min(9, a));
+      const onesB = Math.max(0, Math.min(9, b));
+      const left = randInt(1, 19) * 10 + onesA;
+      const right = randInt(1, 19) * 10 + onesB;
+      return {
+        prompt: `${left} + ${right} = ?`,
+        answer: left + right,
+        areaKey: "op-add",
+        areaLabel: OPERATION_LABELS.add,
+        operation: "add",
+        table: null,
+        left,
+        right
+      };
+    }
+
+    function buildSubtractionPairQuestion(a, b) {
+      const onesA = Math.max(0, Math.min(9, a));
+      const onesB = Math.max(0, Math.min(9, b));
+      const rightTens = randInt(1, 18);
+      const leftTens = Math.min(22, rightTens + (onesA < onesB ? randInt(1, 4) : randInt(0, 4)));
+      let left = leftTens * 10 + onesA;
+      const right = rightTens * 10 + onesB;
+      if (left < right) {
+        left += 10;
+      }
+      return {
+        prompt: `${left} - ${right} = ?`,
+        answer: left - right,
+        areaKey: "op-sub",
+        areaLabel: OPERATION_LABELS.sub,
+        operation: "sub",
+        table: null,
+        left,
+        right
+      };
+    }
+
+    function buildDivisionQuestionByDivisor(divisor) {
+      const validDivisors = getDivisionDivisorCandidates();
+      const chosenDivisor = validDivisors.includes(divisor) ? divisor : pickRandom(validDivisors);
+      const quotient = pickRandom(getDivisionQuotientCandidates());
+      const dividend = chosenDivisor * quotient;
+      return {
+        prompt: `${dividend} / ${chosenDivisor} = ?`,
+        answer: quotient,
+        areaKey: "op-div",
+        areaLabel: OPERATION_LABELS.div,
+        operation: "div",
+        table: chosenDivisor,
+        dividend,
+        divisor: chosenDivisor,
+        quotient
+      };
+    }
+
+    function buildCuratedMultiplicationQuestion(fixedTable = null) {
+      const tableCandidates = getWideTableCandidates();
+      let table = fixedTable && tableCandidates.includes(fixedTable) ? fixedTable : null;
+      if (!table) {
+        const priorityPool = state.curatedPlan.tableRows && state.curatedPlan.tableRows.length
+          ? state.curatedPlan.tableRows.slice(0, 6)
+          : tableCandidates.map((value) => ({ table: value, weight: 1 }));
+        table = pickWeightedRow(priorityPool).table;
+      }
+
+      if (state.curatedPlan.multiplicationSingleRows && state.curatedPlan.multiplicationSingleRows.length) {
+        const sameTableRows = state.curatedPlan.multiplicationSingleRows.filter((row) => row.table === table);
+        const pool = sameTableRows.length ? sameTableRows : state.curatedPlan.multiplicationSingleRows;
+        if (pool.length && Math.random() < 0.68) {
+          const targeted = pickWeightedRow(pool);
+          const matchingMultipliers = getWideMultiplierCandidates().filter((value) =>
+            String(value).includes(String(targeted.digit))
+          );
+          if (matchingMultipliers.length) {
+            const multiplier = pickRandom(matchingMultipliers);
+            return buildTimesWideQuestion(table, multiplier);
+          }
+        }
+      }
+
+      return buildTimesWideQuestion(table);
+    }
+
     function buildCuratedQuestion() {
       if (!state.curatedPlan) {
         state.curatedPlan = getDefaultCuratedPlan();
       }
 
       const focusedTable = parseTableFromKey(state.focusKey);
-      const tableCandidates = getWideTableCandidates();
-      let table = focusedTable && tableCandidates.includes(focusedTable) ? focusedTable : null;
-
-      if (!table) {
-        const usePriorityPool = Math.random() < 0.85;
-        if (usePriorityPool && state.curatedPlan.tableRows.length) {
-          const priorityPool = state.curatedPlan.tableRows.slice(0, 5);
-          table = pickWeightedRow(priorityPool).table;
-        } else {
-          table = pickRandom(tableCandidates);
-        }
+      if (focusedTable) {
+        return buildCuratedMultiplicationQuestion(focusedTable);
       }
 
-      const multiplier = pickRandom(getWideMultiplierCandidates());
-      return {
-        prompt: `${table} x ${multiplier} = ?`,
-        answer: table * multiplier,
-        areaKey: `table-${table}`,
-        areaLabel: `${table}s table`,
-        operation: "mul",
-        table
-      };
+      let operation = parseOperationFromKey(state.focusKey);
+      if (!operation) {
+        const operationRows = state.curatedPlan.operationRows && state.curatedPlan.operationRows.length
+          ? state.curatedPlan.operationRows
+          : OPERATION_ORDER.map((op) => ({ operation: op, weight: CURATED_BASE_OPERATION_WEIGHTS[op] }));
+        operation = pickWeightedRow(operationRows).operation;
+      }
+
+      if (operation === "add") {
+        if (state.curatedPlan.additionPairRows && state.curatedPlan.additionPairRows.length && Math.random() < 0.7) {
+          const pair = pickWeightedRow(state.curatedPlan.additionPairRows);
+          return buildAdditionPairQuestion(pair.a, pair.b);
+        }
+        return buildAdditionQuestion("op-add", OPERATION_LABELS.add);
+      }
+
+      if (operation === "sub") {
+        if (state.curatedPlan.subtractionPairRows && state.curatedPlan.subtractionPairRows.length && Math.random() < 0.7) {
+          const pair = pickWeightedRow(state.curatedPlan.subtractionPairRows);
+          return buildSubtractionPairQuestion(pair.a, pair.b);
+        }
+        return buildSubtractionQuestion("op-sub", OPERATION_LABELS.sub);
+      }
+
+      if (operation === "div") {
+        if (state.curatedPlan.divisionRows && state.curatedPlan.divisionRows.length && Math.random() < 0.7) {
+          const row = pickWeightedRow(state.curatedPlan.divisionRows);
+          return buildDivisionQuestionByDivisor(row.divisor);
+        }
+        return buildDivisionQuestion("op-div", OPERATION_LABELS.div);
+      }
+
+      return buildCuratedMultiplicationQuestion(null);
     }
 
     function buildQuestion() {
@@ -1254,10 +1702,14 @@
     }
 
     function nextQuestion() {
+      clearPendingFeedbackTimeout();
+      feedbackEl.textContent = "";
+      feedbackEl.className = "feedback";
       state.currentQuestion = buildQuestion();
       problemEl.textContent = state.currentQuestion.prompt;
       state.questionStartedAt = performance.now();
       answerInput.value = "";
+      answerInput.disabled = false;
       answerInput.focus();
     }
 
@@ -1283,6 +1735,7 @@
       resetDiagnosticSampling();
       state.endAt = performance.now() + state.durationSec * 1000;
       setView("practice");
+      clearPendingFeedbackTimeout();
 
       modeEl.textContent = getFocusModeLabel();
       feedbackEl.textContent = "";
@@ -1303,6 +1756,7 @@
         return;
       }
       state.active = false;
+      clearPendingFeedbackTimeout();
       clearInterval(state.timerId);
       state.timerId = null;
       answerInput.disabled = true;
@@ -1356,7 +1810,21 @@
       if (state.questionSet === "diagnostic-mixed") {
         state.curatedPlan = buildCuratedPlanFromDiagnostic();
         const topTables = state.curatedPlan.tableRows.slice(0, 4).map((row) => `${row.table}s`).join(", ");
-        weaknessEl.textContent = `Diagnostic complete. Best next step for Zetamac (2-12 x 2-100): train these priority tables: ${topTables}. Sampling now rotates multiplication tables uniformly (including 12s) while keeping +, -, and / in the mix.`;
+        const topSingles = (state.curatedPlan.multiplicationSingleRows || []).slice(0, 3).map((row) => row.label).join(", ");
+        const topAddPairs = (state.curatedPlan.additionPairRows || []).slice(0, 2).map((row) => row.label).join(", ");
+        const topSubPairs = (state.curatedPlan.subtractionPairRows || []).slice(0, 2).map((row) => row.label).join(", ");
+        let message = `Diagnostic complete. Priority multiplication tables: ${topTables}.`;
+        if (topSingles) {
+          message += ` Weak single-facts: ${topSingles}.`;
+        }
+        if (topAddPairs) {
+          message += ` Addition pairs to drill: ${topAddPairs}.`;
+        }
+        if (topSubPairs) {
+          message += ` Subtraction pairs to drill: ${topSubPairs}.`;
+        }
+        message += " Curated mode now adapts by both average time and mistakes.";
+        weaknessEl.textContent = message;
         practiceWeakestBtn.dataset.action = "curated";
         practiceWeakestBtn.textContent = "Start Curated Zetamac Booster";
         practiceWeakestBtn.classList.remove("hidden");
@@ -1447,6 +1915,23 @@
 
       if (now >= state.endAt) {
         finishRound();
+        return;
+      }
+
+      if (!isCorrect) {
+        answerInput.disabled = true;
+        clearPendingFeedbackTimeout();
+        state.feedbackTimeoutId = setTimeout(() => {
+          state.feedbackTimeoutId = null;
+          if (!state.active) {
+            return;
+          }
+          if (performance.now() >= state.endAt) {
+            finishRound();
+            return;
+          }
+          nextQuestion();
+        }, 420);
         return;
       }
 
