@@ -62,6 +62,29 @@
       line-height: 1.45;
     }
 
+    .view-tabs {
+      margin-top: 14px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      border: 1px solid #bcd0eb;
+      background: #f4f8ff;
+      color: #204;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      border-color: transparent;
+    }
+
     .section {
       padding: 22px 24px;
     }
@@ -213,6 +236,50 @@
       background: #fff;
     }
 
+    .stats-page {
+      background: #fff;
+      border-top: 1px solid var(--line);
+    }
+
+    #statsPage {
+      display: none;
+    }
+
+    .app.stats-mode .practice-only {
+      display: none !important;
+    }
+
+    .app.stats-mode #statsPage {
+      display: block !important;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin: 12px 0 16px;
+    }
+
+    .stats-panel {
+      border: 1px solid #dce8f7;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+
+    .stats-panel h3 {
+      margin: 0;
+      padding: 11px 12px;
+      border-bottom: 1px solid #e4ecf8;
+      background: #f7fbff;
+      font-size: 1rem;
+      color: #163;
+    }
+
+    .muted {
+      color: #4a6280;
+    }
+
     .summary {
       display: flex;
       flex-wrap: wrap;
@@ -301,13 +368,17 @@
   </style>
 </head>
 <body>
-  <main class="app">
+  <main id="appRoot" class="app">
     <header class="hero">
       <h1>Mental Math Weakness Trainer</h1>
       <p class="subtitle">Adaptive arithmetic rounds inspired by Zetamac. Run a mixed diagnostic first, then use an automatically curated booster designed to improve your speed for 2-12 x 2-100 multiplication.</p>
+      <div class="view-tabs" role="tablist" aria-label="View">
+        <button id="practiceTabBtn" class="tab active" type="button">Practice</button>
+        <button id="statsTabBtn" class="tab" type="button">Stats Page</button>
+      </div>
     </header>
 
-    <section class="section">
+    <section class="section practice-only">
       <div class="controls">
         <div class="field">
           <label for="questionSet">Question Type</label>
@@ -344,7 +415,7 @@
       <p id="setHint" class="hint">Run the mixed diagnostic first. Then use Curated Zetamac Booster to train your weakest tables for 2-12 x 2-100.</p>
     </section>
 
-    <section id="game" class="section game hidden">
+    <section id="game" class="section game hidden practice-only">
       <div class="hud">
         <div class="metrics">
           <div id="timer" class="pill">120.0s</div>
@@ -364,7 +435,7 @@
       <div id="feedback" class="feedback" aria-live="polite"></div>
     </section>
 
-    <section id="results" class="section results hidden">
+    <section id="results" class="section results hidden practice-only">
       <h2>Round Results</h2>
       <div id="summary" class="summary"></div>
       <div id="weakness" class="weakness"></div>
@@ -385,6 +456,57 @@
         <tbody id="tableStatsBody"></tbody>
       </table>
     </section>
+
+    <section id="statsPage" class="section stats-page">
+      <h2>Lifetime Stats</h2>
+      <p class="muted">Cumulative performance across all rounds on this browser.</p>
+      <div id="statsOverview" class="stats-grid"></div>
+      <div class="stats-panel">
+        <h3>By Operation</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Operation</th>
+              <th>Attempts</th>
+              <th>Accuracy</th>
+              <th>Avg / Prompt</th>
+            </tr>
+          </thead>
+          <tbody id="operationStatsBody"></tbody>
+        </table>
+      </div>
+      <div class="stats-panel">
+        <h3>Multiplication Tables</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Attempts</th>
+              <th>Accuracy</th>
+              <th>Avg / Prompt</th>
+            </tr>
+          </thead>
+          <tbody id="multiplicationStatsBody"></tbody>
+        </table>
+      </div>
+      <div class="stats-panel">
+        <h3>Division Tables (by divisor)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Divisor</th>
+              <th>Attempts</th>
+              <th>Accuracy</th>
+              <th>Avg / Prompt</th>
+            </tr>
+          </thead>
+          <tbody id="divisionStatsBody"></tbody>
+        </table>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button id="resetStatsBtn" class="button secondary" type="button">Reset Lifetime Stats</button>
+      </div>
+    </section>
   </main>
 
   <script>
@@ -394,6 +516,9 @@
       mul: "Multiplication",
       div: "Division"
     };
+    const OPERATION_ORDER = ["add", "sub", "mul", "div"];
+    const DIAGNOSTIC_OP_CYCLE = ["mul", "add", "mul", "sub", "mul", "div"];
+    const LIFETIME_STORAGE_KEY = "mental_math_lifetime_stats_v1";
 
     const state = {
       active: false,
@@ -409,14 +534,21 @@
       questionStartedAt: 0,
       currentQuestion: null,
       areaStats: {},
-      curatedPlan: null
+      curatedPlan: null,
+      diagnosticOpBag: [],
+      diagnosticMulTableBag: [],
+      lifetimeStats: null,
+      currentView: "practice"
     };
 
     const startBtn = document.getElementById("startBtn");
+    const practiceTabBtn = document.getElementById("practiceTabBtn");
+    const statsTabBtn = document.getElementById("statsTabBtn");
     const questionSetSelect = document.getElementById("questionSet");
     const durationSelect = document.getElementById("duration");
     const maxTableSelect = document.getElementById("maxTable");
     const setHintEl = document.getElementById("setHint");
+    const appRoot = document.getElementById("appRoot");
 
     const gameSection = document.getElementById("game");
     const timerEl = document.getElementById("timer");
@@ -434,6 +566,11 @@
     const tableStatsBody = document.getElementById("tableStatsBody");
     const practiceWeakestBtn = document.getElementById("practiceWeakestBtn");
     const newBalancedBtn = document.getElementById("newBalancedBtn");
+    const statsOverviewEl = document.getElementById("statsOverview");
+    const operationStatsBody = document.getElementById("operationStatsBody");
+    const multiplicationStatsBody = document.getElementById("multiplicationStatsBody");
+    const divisionStatsBody = document.getElementById("divisionStatsBody");
+    const resetStatsBtn = document.getElementById("resetStatsBtn");
 
     function randInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -441,6 +578,261 @@
 
     function pickRandom(list) {
       return list[randInt(0, list.length - 1)];
+    }
+
+    function shuffleCopy(list) {
+      const copy = list.slice();
+      for (let index = copy.length - 1; index > 0; index -= 1) {
+        const swapIndex = randInt(0, index);
+        [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+      }
+      return copy;
+    }
+
+    function drawFromBag(stateKey, sourceValues, shouldShuffle = true) {
+      if (!state[stateKey] || !state[stateKey].length) {
+        state[stateKey] = shouldShuffle ? shuffleCopy(sourceValues) : sourceValues.slice();
+      }
+      return state[stateKey].pop();
+    }
+
+    function createStatBucket() {
+      return {
+        attempts: 0,
+        correct: 0,
+        totalTimeMs: 0
+      };
+    }
+
+    function createLifetimeStats() {
+      return {
+        totals: createStatBucket(),
+        operations: {
+          add: createStatBucket(),
+          sub: createStatBucket(),
+          mul: createStatBucket(),
+          div: createStatBucket()
+        },
+        multiplicationTables: {},
+        divisionTables: {}
+      };
+    }
+
+    function ensureLifetimeBucket(map, key) {
+      if (!map[key]) {
+        map[key] = createStatBucket();
+      }
+      return map[key];
+    }
+
+    function safeNumber(value) {
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    function normalizeBucket(raw) {
+      return {
+        attempts: Math.max(0, Math.floor(safeNumber(raw && raw.attempts))),
+        correct: Math.max(0, Math.floor(safeNumber(raw && raw.correct))),
+        totalTimeMs: Math.max(0, safeNumber(raw && raw.totalTimeMs))
+      };
+    }
+
+    function normalizeBucketMap(rawMap) {
+      const result = {};
+      if (!rawMap || typeof rawMap !== "object") {
+        return result;
+      }
+      Object.keys(rawMap).forEach((key) => {
+        result[key] = normalizeBucket(rawMap[key]);
+      });
+      return result;
+    }
+
+    function normalizeLifetimeStats(raw) {
+      const fallback = createLifetimeStats();
+      if (!raw || typeof raw !== "object") {
+        return fallback;
+      }
+      const normalized = {
+        totals: normalizeBucket(raw.totals),
+        operations: {
+          add: normalizeBucket(raw.operations && raw.operations.add),
+          sub: normalizeBucket(raw.operations && raw.operations.sub),
+          mul: normalizeBucket(raw.operations && raw.operations.mul),
+          div: normalizeBucket(raw.operations && raw.operations.div)
+        },
+        multiplicationTables: normalizeBucketMap(raw.multiplicationTables),
+        divisionTables: normalizeBucketMap(raw.divisionTables)
+      };
+      return normalized;
+    }
+
+    function saveLifetimeStats() {
+      try {
+        localStorage.setItem(LIFETIME_STORAGE_KEY, JSON.stringify(state.lifetimeStats));
+      } catch (error) {
+        // Ignore storage failures to keep gameplay uninterrupted.
+      }
+    }
+
+    function loadLifetimeStats() {
+      const fallback = createLifetimeStats();
+      try {
+        const raw = localStorage.getItem(LIFETIME_STORAGE_KEY);
+        if (!raw) {
+          state.lifetimeStats = fallback;
+          return;
+        }
+        state.lifetimeStats = normalizeLifetimeStats(JSON.parse(raw));
+      } catch (error) {
+        state.lifetimeStats = fallback;
+      }
+    }
+
+    function clearElementChildren(element) {
+      element.innerHTML = "";
+    }
+
+    function bucketToMetrics(bucket) {
+      const attempts = bucket.attempts || 0;
+      const accuracyPct = attempts ? Math.round((bucket.correct / attempts) * 100) : 0;
+      const avgSeconds = attempts ? bucket.totalTimeMs / attempts / 1000 : 0;
+      return {
+        attempts,
+        accuracyPct,
+        avgSeconds
+      };
+    }
+
+    function renderStatsTableRows(bodyEl, rows, emptyLabel) {
+      clearElementChildren(bodyEl);
+      if (!rows.length) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="4" class="muted">${emptyLabel}</td>`;
+        bodyEl.appendChild(tr);
+        return;
+      }
+      rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.label}</td>
+          <td>${row.attempts}</td>
+          <td>${row.accuracyPct}%</td>
+          <td>${row.avgSeconds.toFixed(2)}s</td>
+        `;
+        bodyEl.appendChild(tr);
+      });
+    }
+
+    function renderStatsPage() {
+      if (!state.lifetimeStats) {
+        return;
+      }
+
+      const totals = bucketToMetrics(state.lifetimeStats.totals);
+      clearElementChildren(statsOverviewEl);
+      const cards = [
+        `Total prompts: ${totals.attempts}`,
+        `Total correct: ${state.lifetimeStats.totals.correct}`,
+        `Lifetime accuracy: ${totals.accuracyPct}%`,
+        `Average time: ${totals.avgSeconds.toFixed(2)}s`
+      ];
+      cards.forEach((text) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.textContent = text;
+        statsOverviewEl.appendChild(card);
+      });
+
+      const operationRows = OPERATION_ORDER.map((operation) => {
+        const metrics = bucketToMetrics(state.lifetimeStats.operations[operation]);
+        return {
+          label: OPERATION_LABELS[operation],
+          ...metrics
+        };
+      });
+      renderStatsTableRows(operationStatsBody, operationRows, "No operation data yet.");
+
+      const multiplicationRows = Object.keys(state.lifetimeStats.multiplicationTables)
+        .map((key) => Number(key))
+        .filter((value) => Number.isInteger(value))
+        .sort((a, b) => a - b)
+        .map((table) => {
+          const metrics = bucketToMetrics(state.lifetimeStats.multiplicationTables[String(table)]);
+          return {
+            label: `${table}s`,
+            ...metrics
+          };
+        });
+      renderStatsTableRows(multiplicationStatsBody, multiplicationRows, "No multiplication-table data yet.");
+
+      const divisionRows = Object.keys(state.lifetimeStats.divisionTables)
+        .map((key) => Number(key))
+        .filter((value) => Number.isInteger(value))
+        .sort((a, b) => a - b)
+        .map((divisor) => {
+          const metrics = bucketToMetrics(state.lifetimeStats.divisionTables[String(divisor)]);
+          return {
+            label: `${divisor}s`,
+            ...metrics
+          };
+        });
+      renderStatsTableRows(divisionStatsBody, divisionRows, "No division-table data yet.");
+    }
+
+    function setView(view) {
+      state.currentView = view;
+      const showStats = view === "stats";
+      appRoot.classList.toggle("stats-mode", showStats);
+      practiceTabBtn.classList.toggle("active", !showStats);
+      statsTabBtn.classList.toggle("active", showStats);
+      if (showStats) {
+        renderStatsPage();
+      }
+    }
+
+    function recordLifetimeStats(question, elapsedMs, isCorrect) {
+      if (!state.lifetimeStats || !question || !question.operation) {
+        return;
+      }
+
+      const totalsBucket = state.lifetimeStats.totals;
+      totalsBucket.attempts += 1;
+      totalsBucket.totalTimeMs += elapsedMs;
+      if (isCorrect) {
+        totalsBucket.correct += 1;
+      }
+
+      const operationBucket = state.lifetimeStats.operations[question.operation];
+      if (operationBucket) {
+        operationBucket.attempts += 1;
+        operationBucket.totalTimeMs += elapsedMs;
+        if (isCorrect) {
+          operationBucket.correct += 1;
+        }
+      }
+
+      if (question.operation === "mul" && Number.isInteger(question.table)) {
+        const key = String(question.table);
+        const bucket = ensureLifetimeBucket(state.lifetimeStats.multiplicationTables, key);
+        bucket.attempts += 1;
+        bucket.totalTimeMs += elapsedMs;
+        if (isCorrect) {
+          bucket.correct += 1;
+        }
+      }
+
+      if (question.operation === "div" && Number.isInteger(question.table)) {
+        const key = String(question.table);
+        const bucket = ensureLifetimeBucket(state.lifetimeStats.divisionTables, key);
+        bucket.attempts += 1;
+        bucket.totalTimeMs += elapsedMs;
+        if (isCorrect) {
+          bucket.correct += 1;
+        }
+      }
+
+      saveLifetimeStats();
     }
 
     function buildCandidateList(min, max, excludedSet) {
@@ -493,7 +885,7 @@
 
     function describeQuestionSet(questionSet, maxTable) {
       if (questionSet === "diagnostic-mixed") {
-        return "Diagnostic mixed (+, -, x, /) with non-trivial x and /";
+        return "Diagnostic mixed with balanced coverage (+, -, x, /), weighted toward multiplication";
       }
       if (questionSet === "curated-zetamac") {
         return "Curated Zetamac booster: adaptive 2-12 x 2-100";
@@ -519,7 +911,7 @@
     function updateSetHint() {
       const questionSet = questionSetSelect.value;
       const hints = {
-        "diagnostic-mixed": "Recommended: run this first so the app can find your weak tables and build a targeted Zetamac booster.",
+        "diagnostic-mixed": "Recommended first: balanced diagnostic with guaranteed 2-12 table rotation (including 12s) plus +, -, and / coverage.",
         "curated-zetamac": "Adaptive mode: mostly weak 2-12 tables and non-trivial multipliers (no x1/x10/x100).",
         "times-normal": "Normal table mode excludes x1 and x10 prompts to keep reps non-trivial.",
         "times-wide": "Wide mode uses 2-12 x 2-100 and removes x10/x100 prompts.",
@@ -534,6 +926,11 @@
 
     function resetAreaStats() {
       state.areaStats = {};
+    }
+
+    function resetDiagnosticSampling() {
+      state.diagnosticOpBag = [];
+      state.diagnosticMulTableBag = [];
     }
 
     function ensureAreaStats(areaKey, areaLabel) {
@@ -627,7 +1024,9 @@
         prompt: `${left} + ${right} = ?`,
         answer: left + right,
         areaKey,
-        areaLabel
+        areaLabel,
+        operation: "add",
+        table: null
       };
     }
 
@@ -638,7 +1037,9 @@
         prompt: `${left} - ${right} = ?`,
         answer: left - right,
         areaKey,
-        areaLabel
+        areaLabel,
+        operation: "sub",
+        table: null
       };
     }
 
@@ -650,7 +1051,9 @@
         prompt: `${table} x ${multiplier} = ?`,
         answer: table * multiplier,
         areaKey: `table-${table}`,
-        areaLabel: `${table}s table`
+        areaLabel: `${table}s table`,
+        operation: "mul",
+        table
       };
     }
 
@@ -663,7 +1066,9 @@
         prompt: `${table} x ${multiplier} = ?`,
         answer: table * multiplier,
         areaKey: `table-${table}`,
-        areaLabel: `${table}s table`
+        areaLabel: `${table}s table`,
+        operation: "mul",
+        table
       };
     }
 
@@ -675,7 +1080,9 @@
         prompt: `${dividend} / ${divisor} = ?`,
         answer: quotient,
         areaKey,
-        areaLabel
+        areaLabel,
+        operation: "div",
+        table: divisor
       };
     }
 
@@ -688,6 +1095,8 @@
         operation = "mul";
       } else if (focusedOperation) {
         operation = focusedOperation;
+      } else if (questionSet === "diagnostic-mixed") {
+        operation = drawFromBag("diagnosticOpBag", DIAGNOSTIC_OP_CYCLE, false);
       } else {
         operation = pickRandom(["add", "sub", "mul", "div"]);
       }
@@ -702,8 +1111,9 @@
         return buildDivisionQuestion("op-div", OPERATION_LABELS.div);
       }
 
-      if (questionSet === "diagnostic-mixed" && focusedTable) {
-        return buildTimesWideQuestion(focusedTable);
+      if (questionSet === "diagnostic-mixed") {
+        const sampledTable = focusedTable || drawFromBag("diagnosticMulTableBag", getWideTableCandidates());
+        return buildTimesWideQuestion(sampledTable);
       }
       return buildTimesWideQuestion(focusedTable);
     }
@@ -795,7 +1205,9 @@
         prompt: `${table} x ${multiplier} = ?`,
         answer: table * multiplier,
         areaKey: `table-${table}`,
-        areaLabel: `${table}s table`
+        areaLabel: `${table}s table`,
+        operation: "mul",
+        table
       };
     }
 
@@ -868,7 +1280,9 @@
       state.score = 0;
       state.active = true;
       resetAreaStats();
+      resetDiagnosticSampling();
       state.endAt = performance.now() + state.durationSec * 1000;
+      setView("practice");
 
       modeEl.textContent = getFocusModeLabel();
       feedbackEl.textContent = "";
@@ -942,7 +1356,7 @@
       if (state.questionSet === "diagnostic-mixed") {
         state.curatedPlan = buildCuratedPlanFromDiagnostic();
         const topTables = state.curatedPlan.tableRows.slice(0, 4).map((row) => `${row.table}s`).join(", ");
-        weaknessEl.textContent = `Diagnostic complete. Best next step for Zetamac (2-12 x 2-100): train these priority tables: ${topTables}. Easy prompts are already filtered out (no x1/x10/x100 and no /1 or /10).`;
+        weaknessEl.textContent = `Diagnostic complete. Best next step for Zetamac (2-12 x 2-100): train these priority tables: ${topTables}. Sampling now rotates multiplication tables uniformly (including 12s) while keeping +, -, and / in the mix.`;
         practiceWeakestBtn.dataset.action = "curated";
         practiceWeakestBtn.textContent = "Start Curated Zetamac Booster";
         practiceWeakestBtn.classList.remove("hidden");
@@ -1016,7 +1430,8 @@
       stats.attempts += 1;
       stats.totalTimeMs += elapsed;
 
-      if (userValue === current.answer) {
+      const isCorrect = userValue === current.answer;
+      if (isCorrect) {
         state.correct += 1;
         state.score += 1;
         stats.correct += 1;
@@ -1027,6 +1442,7 @@
         feedbackEl.className = "feedback bad";
       }
 
+      recordLifetimeStats(current, elapsed, isCorrect);
       updateHud();
 
       if (now >= state.endAt) {
@@ -1039,6 +1455,15 @@
 
     startBtn.addEventListener("click", () => startRound(null));
     newBalancedBtn.addEventListener("click", () => startRound(null));
+    practiceTabBtn.addEventListener("click", () => {
+      setView("practice");
+    });
+    statsTabBtn.addEventListener("click", () => {
+      if (state.active) {
+        finishRound();
+      }
+      setView("stats");
+    });
     practiceWeakestBtn.addEventListener("click", () => {
       const action = practiceWeakestBtn.dataset.action;
       if (action === "curated") {
@@ -1054,9 +1479,21 @@
         }
       }
     });
+    resetStatsBtn.addEventListener("click", () => {
+      const shouldReset = window.confirm("Reset all lifetime stats on this browser?");
+      if (!shouldReset) {
+        return;
+      }
+      state.lifetimeStats = createLifetimeStats();
+      saveLifetimeStats();
+      renderStatsPage();
+    });
     questionSetSelect.addEventListener("change", updateSetHint);
 
+    loadLifetimeStats();
+    renderStatsPage();
     updateSetHint();
+    setView("practice");
   </script>
 </body>
 </html>
